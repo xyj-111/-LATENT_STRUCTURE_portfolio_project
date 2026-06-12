@@ -270,21 +270,21 @@ export const algorithmCards: AlgorithmCardData[] = [
     label: 'Input Field',
     body: '',
     metrics: [],
-    href: '/labs/generate.html',
+    href: './labs/generate.html',
   },
   {
     title: 'Explain',
     label: 'Trace Logic',
     body: '',
     metrics: [],
-    href: '/labs/explain.html',
+    href: './labs/explain.html',
   },
   {
     title: 'Evaluate',
     label: 'Archive Output',
     body: '',
     metrics: [],
-    href: '/labs/evaluate.html',
+    href: './labs/evaluate.html',
   },
 ];
 
