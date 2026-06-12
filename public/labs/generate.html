@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garment Dye Lab V5</title>
+    <link rel="preload" href="./model1.glb" as="fetch" type="model/gltf-binary" crossorigin="anonymous">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden;
+            background: #f0f0f0;
+            background-image: radial-gradient(circle at center, #fff 0%, #e0e0e0 100%);
+            font-family: 'DM Sans', 'Noto Sans SC', sans-serif;
+        }
+        html:not(.v5-ready) #ui-panel,
+        html:not(.v5-ready) .hint,
+        html:not(.v5-ready) #export-modal {
+            opacity: 0;
+        }
+        #canvas-container { width:100%; height:100%; display:block; cursor:grab; }
+        #canvas-container:active { cursor:grabbing; }
+
+        /* ─── 右侧面板 ─── */
+        #ui-panel {
+            position:absolute; top:16px; right:16px;
+            background:rgba(255,255,255,0.82);
+            backdrop-filter:none; -webkit-backdrop-filter:none;
+            border:1px solid rgba(0,0,0,0.06);
+            padding:20px 20px 16px; border-radius:18px;
+            color:#333; width:310px;
+            box-shadow:0 8px 40px rgba(0,0,0,0.10),0 1px 3px rgba(0,0,0,0.04);
+            z-index:10;
+            max-height:calc(100vh - 32px);
+            overflow-y:auto; overflow-x:hidden;
+            scrollbar-width:thin; scrollbar-color:#ddd transparent;
+        }
+        #ui-panel::-webkit-scrollbar { width:3px; }
+        #ui-panel::-webkit-scrollbar-thumb { background:#ccc; border-radius:2px; }
+
+        .title-wrapper { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+        h1 { font-size:1.05rem; margin:0; font-weight:700; letter-spacing:2.5px; color:#111; text-transform:uppercase; }
+        .switch { position:relative; display:inline-block; width:34px; height:18px; }
+        .switch input { opacity:0; width:0; height:0; }
+        .switch .slider { position:absolute; cursor:pointer; inset:0; background:#ccc; transition:.3s; border-radius:18px; }
+        .switch .slider:before { position:absolute; content:""; height:12px; width:12px; left:3px; bottom:3px; background:#fff; transition:.3s; border-radius:50%; }
+        .switch input:checked+.slider { background:#111; }
+        .switch input:checked+.slider:before { transform:translateX(16px); }
+
+        p.subtitle { font-size:0.72rem; color:#999; margin-bottom:18px; line-height:1.5; font-weight:400; }
+
+        /* ─── 折叠区块 ─── */
+        .section { margin-bottom:4px; }
+        .section-header {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:8px 0; cursor:pointer; user-select:none;
+            border-bottom:1px solid #f0f0f0;
+        }
+        .section-header:hover .section-title { color:#111; }
+        .section-title { font-size:0.75rem; font-weight:600; color:#555; letter-spacing:0.8px; text-transform:uppercase; transition:color 0.2s; }
+        .section-arrow { font-size:0.6rem; color:#bbb; transition:transform 0.25s; }
+        .section-header.collapsed .section-arrow { transform:rotate(-90deg); }
+        .section-body { overflow:hidden; transition:max-height 0.3s ease, opacity 0.25s; max-height:800px; opacity:1; padding-top:10px; }
+        .section-header.collapsed + .section-body { max-height:0; opacity:0; padding-top:0; }
+
+        .control-group { margin-bottom:12px; }
+        .control-group label {
+            display:flex; justify-content:space-between;
+            font-size:0.76rem; color:#555; margin-bottom:5px; font-weight:500;
+        }
+        .control-group label span { color:#999; font-weight:400; font-size:0.70rem; }
+
+        select { width:100%; padding:7px 10px; border-radius:8px; border:1px solid #e0e0e0; background:#fafafa; font-size:0.80rem; outline:none; cursor:pointer; transition:all 0.2s; font-family:inherit; }
+        select:hover { border-color:#bbb; }
+        input[type="range"] { width:100%; cursor:pointer; accent-color:#111; margin-top:2px; height:4px; }
+        input[type="color"] { width:100%; padding:2px; height:34px; border-radius:8px; border:1px solid #e0e0e0; background:#fafafa; cursor:pointer; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding:2px; }
+        input[type="color"]::-webkit-color-swatch { border:none; border-radius:5px; }
+
+        .color-row { display:flex; gap:7px; }
+        .color-row > div { flex:1; min-width:0; }
+        .color-row label { font-size:0.65rem !important; color:#aaa !important; font-weight:400 !important; }
+
+        .toggle-btn { background:none; border:none; color:#aaa; cursor:pointer; font-size:0.65rem; text-decoration:underline; padding:0; transition:color 0.2s; }
+        .toggle-btn:hover { color:#111; }
+
+        .refresh-btn {
+            background:#111; color:#fff; border:none; border-radius:50%;
+            width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center;
+            cursor:pointer; padding:0; transition:transform 0.2s, background 0.2s;
+        }
+        .refresh-btn:hover { background:#444; }
+        .refresh-btn:active { transform:scale(0.85) rotate(45deg); }
+
+        .action-btn {
+            width:100%; padding:9px; border:none; border-radius:8px;
+            cursor:pointer; transition:all 0.3s ease; font-size:0.80rem; font-weight:500;
+            font-family:inherit; letter-spacing:0.3px; margin-top:6px;
+        }
+        .action-btn:hover { transform:translateY(-1px); }
+        .btn-dark { background:#111; color:#fff; }
+        .btn-dark:hover { background:#333; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+        .btn-green { background:linear-gradient(135deg,#2a5a3a,#1a3a2a); color:#fff; }
+        .btn-green:hover { filter:brightness(1.1); box-shadow:0 4px 16px rgba(42,90,58,0.35); }
+
+        .hint { position:absolute; bottom:24px; left:24px; color:rgba(0,0,0,0.3); font-size:0.72rem; letter-spacing:1.5px; pointer-events:none; }
+
+        /* ─── 工艺专属参数 ─── */
+        .technique-controls { border-top:1px dashed #e8e8e8; margin-top:4px; padding-top:10px; display:none; }
+        .technique-controls.active { display:block; }
+        .technique-header { font-size:0.62rem; color:#bbb; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 10px; text-align:center; }
+        .param-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+        .param-grid .control-group { margin-bottom:0; }
+        .param-grid .control-group.full-width { grid-column:1/-1; }
+
+        /* ─── 预设方案库 ─── */
+        .preset-shelf {
+            display:grid; grid-template-columns:1fr 1fr;
+            gap:6px; margin-top:6px;
+        }
+        .preset-card {
+            position:relative; border-radius:10px; overflow:hidden;
+            cursor:pointer; transition:all 0.2s; border:2px solid transparent;
+            aspect-ratio:1.4; background:#f8f8f8;
+        }
+        .preset-card:hover { border-color:#111; transform:scale(1.03); }
+        .preset-card.active { border-color:#111; box-shadow:0 2px 10px rgba(0,0,0,0.15); }
+        .preset-colors {
+            position:absolute; top:0; left:0; right:0; bottom:0;
+            display:flex;
+        }
+        .preset-colors > div { flex:1; }
+        .preset-label {
+            position:absolute; bottom:0; left:0; right:0;
+            background:linear-gradient(transparent, rgba(0,0,0,0.65));
+            color:#fff; font-size:0.60rem; font-weight:600;
+            padding:12px 6px 5px; letter-spacing:0.5px;
+            line-height:1.2;
+        }
+        .preset-label small { display:block; font-weight:400; opacity:0.75; font-size:0.52rem; margin-top:1px; }
+
+        /* ─── 叠染图层 ─── */
+        .layer-toggle {
+            display:flex; align-items:center; gap:8px;
+            margin-bottom:10px;
+        }
+        .layer-toggle label { font-size:0.76rem; color:#555; font-weight:500; margin:0; flex:1; }
+        .blend-row { display:flex; gap:8px; margin-bottom:10px; }
+        .blend-row > div { flex:1; }
+        .blend-row select { font-size:0.75rem; padding:6px 8px; }
+        .blend-row label { font-size:0.65rem !important; color:#aaa !important; font-weight:400 !important; display:block; margin-bottom:3px; }
+
+        /* ─── 弹窗 ─── */
+        .modal-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,0.45); backdrop-filter:blur(6px);
+            z-index:100; align-items:center; justify-content:center;
+        }
+        .modal-overlay.active { display:flex; }
+        .modal {
+            background:#fff; border-radius:20px; padding:26px 28px 22px;
+            width:520px; max-width:92vw; max-height:90vh; overflow-y:auto;
+            box-shadow:0 20px 60px rgba(0,0,0,0.25);
+            animation:modalIn 0.25s ease-out;
+        }
+        @keyframes modalIn { from{opacity:0;transform:translateY(12px) scale(0.97);} to{opacity:1;transform:none;} }
+        .modal h2 { font-size:1rem; font-weight:700; margin:0 0 4px; color:#111; letter-spacing:1px; }
+        .modal .modal-sub { font-size:0.70rem; color:#999; margin-bottom:16px; line-height:1.5; }
+        .modal-preview-row { display:flex; gap:12px; margin-bottom:14px; }
+        .modal-preview-box { width:150px; height:150px; border-radius:10px; border:1px solid #e8e8e8; overflow:hidden; flex-shrink:0; background:#fafafa; }
+        .modal-preview-box canvas { width:100%; height:100%; object-fit:cover; }
+        .modal-info { flex:1; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
+        .modal-info .info-label { font-size:0.62rem; color:#aaa; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+        .modal-info .info-value { font-size:0.78rem; color:#333; margin-bottom:8px; word-break:break-all; }
+        .modal label.modal-label { display:block; font-size:0.72rem; color:#555; font-weight:600; margin-bottom:5px; letter-spacing:0.5px; }
+        .modal textarea {
+            width:100%; height:100px; border:1px solid #e0e0e0; border-radius:10px;
+            padding:10px 12px; font-size:0.78rem; font-family:inherit; resize:vertical;
+            outline:none; transition:border-color 0.2s; background:#fafafa; color:#333; line-height:1.6;
+        }
+        .modal textarea:focus { border-color:#999; background:#fff; }
+        .modal textarea::placeholder { color:#ccc; }
+        .modal-row { display:flex; gap:10px; align-items:end; margin-top:12px; }
+        .modal-row .control-group { flex:1; margin-bottom:0; }
+        .modal-row select { width:100%; padding:7px 10px; border-radius:8px; border:1px solid #e0e0e0; background:#fafafa; font-size:0.78rem; outline:none; cursor:pointer; font-family:inherit; }
+        .modal-actions { display:flex; gap:8px; margin-top:16px; }
+        .modal-actions button { flex:1; padding:9px; border-radius:8px; border:none; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.2s; letter-spacing:0.3px; }
+        .btn-cancel { background:#f0f0f0; color:#666; }
+        .btn-cancel:hover { background:#e4e4e4; }
+        .btn-export-uv { background:#111; color:#fff; }
+        .btn-export-uv:hover { background:#333; transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+        .btn-export-prompt { background:linear-gradient(135deg,#2a5a3a,#1a3a2a); color:#fff; }
+        .btn-export-prompt:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 4px 12px rgba(42,90,58,0.3); }
+    </style>
+</head>
+<body>
+
+<div id="ui-panel">
+    <div class="title-wrapper">
+        <h1>染衣坊</h1>
+        <label class="switch" title="Auto rotate"><input type="checkbox" id="auto-rotate"><span class="slider"></span></label>
+    </div>
+    <p class="subtitle">Garment Dye Lab · 面料 → 底染 → 叠染 → 导出</p>
+
+    <!-- ━━ 1. 灵感预设 ━━ -->
+    <div class="section">
+        <div class="section-header collapsed" onclick="this.classList.toggle('collapsed')">
+            <span class="section-title">🎨 灵感预设 Presets</span>
+            <span class="section-arrow">▼</span>
+        </div>
+        <div class="section-body">
+            <div class="preset-shelf" id="preset-shelf"></div>
+        </div>
+    </div>
+
+    <!-- ━━ 2. 面料 ━━ -->
+    <div class="section">
+        <div class="section-header collapsed" onclick="this.classList.toggle('collapsed')">
+            <span class="section-title">🧵 面料材质 Fabric</span>
+            <span class="section-arrow">▼</span>
+        </div>
+        <div class="section-body">
+            <div class="control-group">
+                <select id="fabric-type">
+                    <option value="cotton">纯棉 Cotton — 哑光质感</option>
+                    <option value="silk">真丝 Silk — 丝滑光泽</option>
+                    <option value="velvet">丝绒 Velvet — 柔亮起绒</option>
+                    <option value="nylon">尼龙 Nylon — 平滑反光</option>
+                    <option value="denim">丹宁 Denim — 粗犷哑光</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ━━ 3. 底染层 ━━ -->
+    <div class="section">
+        <div class="section-header collapsed" onclick="this.classList.toggle('collapsed')">
+            <span class="section-title">💧 底染层 Base Layer</span>
+            <span class="section-arrow">▼</span>
+        </div>
+        <div class="section-body">
+            <div class="control-group">
+                <label>底染工艺 Technique</label>
+                <select id="dye-pattern">
+                    <option value="solid" selected>素色单染 Solid</option>
+                    <option value="gradient">手工吊染 Dip Dye</option>
+                    <option value="ecoprint">植物拓印 Eco-Print</option>
+                    <option value="radial">冰染结晶 Ice Crystal</option>
+                    <option value="mineral">矿物晕染 Mineral Bleed</option>
+                    <option value="acidwash">雪花酸洗 Acid Wash</option>
+                    <option value="marble">水拓大理石纹 Marble</option>
+                    <option value="splatter">泼墨喷涂 Splatter</option>
+                    <option value="aura">水彩晕染 Watercolor</option>
+                    <option value="shibori">Shibori 风暴 Storm</option>
+                    <option value="shibori-tide">Shibori 潮汐 Tide</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label style="align-items:center;">
+                    <span>图案缩放 Scale <span id="val-scale" style="color:#999;font-weight:400;">1.0</span></span>
+                    <button id="refresh-pattern-btn" class="refresh-btn" title="重新随机生成">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                </label>
+                <input type="range" id="dye-scale" min="0.2" max="3.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>底染色彩 Colors <button id="toggle-color-btn" class="toggle-btn">➕ 辅色2</button></label>
+                <div class="color-row">
+                    <div><label>主色调</label><input type="color" id="color1" value="#e3ceb8"></div>
+                    <div><label>辅色调1</label><input type="color" id="color2" value="#4a5d23"></div>
+                    <div id="color3-container" style="display:none;"><label>辅色调2</label><input type="color" id="color3" value="#3a2f26"></div>
+                </div>
+            </div>
+
+            <!-- 各工艺专属参数 -->
+            <div id="gradient-controls" class="technique-controls">
+                <p class="technique-header">— 手工吊染 Dip Dye —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>染浸角度 <span id="val-grad-angle">0</span>°</label><input type="range" id="grad-angle" min="0" max="360" step="5" value="0"></div>
+                    <div class="control-group"><label>渗透波动 <span id="val-grad-ripple">0.30</span></label><input type="range" id="grad-ripple" min="0" max="1.0" step="0.05" value="0.3"></div>
+                    <div class="control-group full-width"><label>过渡锐度 <span id="val-grad-sharp">0.50</span></label><input type="range" id="grad-sharp" min="0.1" max="1.5" step="0.05" value="0.5"></div>
+                </div>
+            </div>
+            <div id="ecoprint-controls" class="technique-controls">
+                <p class="technique-header">— 植物拓印 Eco-Print —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>叶片数量 <span id="val-eco-count">12</span></label><input type="range" id="eco-count" min="4" max="30" step="1" value="12"></div>
+                    <div class="control-group"><label>水渍强度 <span id="val-eco-stain">0.50</span></label><input type="range" id="eco-stain" min="0.1" max="1.0" step="0.05" value="0.5"></div>
+                    <div class="control-group full-width"><label>印压力度 <span id="val-eco-pressure">0.70</span></label><input type="range" id="eco-pressure" min="0.2" max="1.0" step="0.05" value="0.7"></div>
+                </div>
+            </div>
+            <div id="radial-controls" class="technique-controls">
+                <p class="technique-header">— 冰染结晶 Ice Crystal —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>结晶密度 <span id="val-rad-density">1.0</span></label><input type="range" id="rad-density" min="0.3" max="2.5" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>冰花尖锐 <span id="val-rad-spike">1.0</span></label><input type="range" id="rad-spike" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group full-width"><label>渗透融合 <span id="val-rad-bleed">1.0</span></label><input type="range" id="rad-bleed" min="0.3" max="2.5" step="0.1" value="1.0"></div>
+                </div>
+            </div>
+            <div id="mineral-controls" class="technique-controls">
+                <p class="technique-header">— 矿物晕染 Mineral Bleed —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>纹理方向 <span id="val-min-dir">0</span>°</label><input type="range" id="min-dir" min="0" max="180" step="5" value="0"></div>
+                    <div class="control-group"><label>扰动强度 <span id="val-min-distort">1.0</span></label><input type="range" id="min-distort" min="0.2" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group full-width"><label>边缘渗染 <span id="val-min-edge">0.15</span></label><input type="range" id="min-edge" min="0.02" max="0.40" step="0.02" value="0.15"></div>
+                </div>
+            </div>
+            <div id="acidwash-controls" class="technique-controls">
+                <p class="technique-header">— 雪花酸洗 Acid Wash —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>漂白强度 <span id="val-acid-bleach">0.85</span></label><input type="range" id="acid-bleach" min="0.3" max="1.0" step="0.05" value="0.85"></div>
+                    <div class="control-group"><label>斑块大小 <span id="val-acid-patch">1.0</span></label><input type="range" id="acid-patch" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group full-width"><label>纤维纹理 <span id="val-acid-fiber">0.40</span></label><input type="range" id="acid-fiber" min="0.0" max="1.0" step="0.05" value="0.4"></div>
+                </div>
+            </div>
+            <div id="marble-controls" class="technique-controls">
+                <p class="technique-header">— 水拓大理石 Marble —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>纹理密度 <span id="val-mrb-veins">1.0</span></label><input type="range" id="mrb-veins" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>墨流波动 <span id="val-mrb-wave">1.0</span></label><input type="range" id="mrb-wave" min="0.2" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>线条粗细 <span id="val-mrb-width">1.0</span></label><input type="range" id="mrb-width" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>旋涡扰动 <span id="val-mrb-swirl">0.0</span></label><input type="range" id="mrb-swirl" min="0.0" max="2.0" step="0.1" value="0.0"></div>
+                </div>
+            </div>
+            <div id="splatter-controls" class="technique-controls">
+                <p class="technique-header">— 泼墨喷涂 Splatter —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>泼墨量 <span id="val-spl-amount">1.0</span></label><input type="range" id="spl-amount" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>飞溅距离 <span id="val-spl-splash">1.0</span></label><input type="range" id="spl-splash" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group full-width"><label>拖尾流线 <span id="val-spl-drip">1.0</span></label><input type="range" id="spl-drip" min="0.0" max="3.0" step="0.1" value="1.0"></div>
+                </div>
+            </div>
+            <div id="aura-controls" class="technique-controls">
+                <p class="technique-header">— 水彩晕染 Watercolor —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>颜料浓度 <span id="val-aura-int">0.85</span></label><input type="range" id="aura-int" min="0.2" max="1.0" step="0.05" value="0.85"></div>
+                    <div class="control-group"><label>色团数量 <span id="val-aura-blobs">5</span></label><input type="range" id="aura-blobs" min="2" max="12" step="1" value="5"></div>
+                    <div class="control-group"><label>扩散半径 <span id="val-aura-spread">1.0</span></label><input type="range" id="aura-spread" min="0.3" max="2.5" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>水迹边缘 <span id="val-aura-edge">0.00</span></label><input type="range" id="aura-edge" min="0.0" max="1.0" step="0.05" value="0.0"></div>
+                </div>
+            </div>
+            <div id="shibori-controls" class="technique-controls">
+                <p class="technique-header">— Shibori Storm —</p>
+                <div class="param-grid">
+                    <div class="control-group"><label>条纹密度 <span id="val-density">1.0</span></label><input type="range" id="shibori-density" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>晕染扩散 <span id="val-softness">1.0</span></label><input type="range" id="shibori-softness" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                    <div class="control-group"><label>裙摆过渡 <span id="val-border">0.20</span></label><input type="range" id="shibori-border" min="0.05" max="0.50" step="0.05" value="0.20"></div>
+                    <div class="control-group"><label>上下对齐 <span id="val-alignment">0.00</span></label><input type="range" id="shibori-alignment" min="0" max="0.99" step="0.01" value="0"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ━━ 4. 叠染层 ━━ -->
+    <div class="section">
+        <div class="section-header collapsed" onclick="this.classList.toggle('collapsed')">
+            <span class="section-title">🔲 叠染层 Overlay</span>
+            <span class="section-arrow">▼</span>
+        </div>
+        <div class="section-body">
+            <div class="layer-toggle">
+                <label>启用叠染</label>
+                <label class="switch"><input type="checkbox" id="overlay-enabled"><span class="slider"></span></label>
+            </div>
+            <div id="overlay-panel" style="opacity:0.4;pointer-events:none;">
+                <div class="control-group">
+                    <label>叠染工艺</label>
+                    <select id="overlay-pattern">
+                        <option value="none">（无）</option>
+                        <option value="solid">素色单染 Solid</option>
+                        <option value="gradient">手工吊染 Dip Dye</option>
+                        <option value="ecoprint">植物拓印 Eco-Print</option>
+                        <option value="radial">冰染结晶 Ice Crystal</option>
+                        <option value="mineral">矿物晕染 Mineral Bleed</option>
+                        <option value="acidwash">雪花酸洗 Acid Wash</option>
+                        <option value="marble">水拓大理石纹 Marble</option>
+                        <option value="splatter">泼墨喷涂 Splatter</option>
+                        <option value="aura">水彩晕染 Watercolor</option>
+                        <option value="shibori">Shibori 风暴 Storm</option>
+                        <option value="shibori-tide">Shibori 潮汐 Tide</option>
+                    </select>
+                </div>
+                <div class="blend-row">
+                    <div>
+                        <label>Blend Mode</label>
+                        <select id="overlay-blend">
+                            <option value="source-over">正常 Normal</option>
+                            <option value="multiply">正片叠底 Multiply</option>
+                            <option value="overlay">叠加 Overlay</option>
+                            <option value="screen">滤色 Screen</option>
+                            <option value="soft-light">柔光 Soft Light</option>
+                            <option value="darken">变暗 Darken</option>
+                            <option value="color-burn">颜色加深 Burn</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Opacity <span id="val-overlay-opacity">0.60</span></label>
+                        <input type="range" id="overlay-opacity" min="0.05" max="1.0" step="0.05" value="0.60">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>叠染缩放 <span id="val-overlay-scale">1.0</span></label>
+                    <input type="range" id="overlay-scale" min="0.2" max="3.0" step="0.1" value="1.0">
+                </div>
+                <div class="color-row">
+                    <div style="position:relative;">
+                        <label>叠染主色 <label style="font-size:0.58rem!important;margin:0!important;"><input type="checkbox" id="overlay-c1-transparent" style="width:auto;height:auto;margin-right:2px;vertical-align:middle;">透明</label></label>
+                        <input type="color" id="overlay-c1" value="#1a1a3a">
+                    </div>
+                    <div><label>叠染辅色</label><input type="color" id="overlay-c2" value="#4a2a1a"></div>
+                </div>
+
+                <!-- 叠染层工艺专属参数 -->
+                <div id="ov-gradient-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·吊染 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>染浸角度 <span id="ov-val-grad-angle">0</span>°</label><input type="range" id="ov-grad-angle" min="0" max="360" step="5" value="0"></div>
+                        <div class="control-group"><label>渗透波动 <span id="ov-val-grad-ripple">0.30</span></label><input type="range" id="ov-grad-ripple" min="0" max="1.0" step="0.05" value="0.3"></div>
+                        <div class="control-group full-width"><label>过渡锐度 <span id="ov-val-grad-sharp">0.50</span></label><input type="range" id="ov-grad-sharp" min="0.1" max="1.5" step="0.05" value="0.5"></div>
+                    </div>
+                </div>
+                <div id="ov-ecoprint-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·拓印 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>叶片数量 <span id="ov-val-eco-count">12</span></label><input type="range" id="ov-eco-count" min="4" max="30" step="1" value="12"></div>
+                        <div class="control-group"><label>水渍强度 <span id="ov-val-eco-stain">0.50</span></label><input type="range" id="ov-eco-stain" min="0.1" max="1.0" step="0.05" value="0.5"></div>
+                        <div class="control-group full-width"><label>印压力度 <span id="ov-val-eco-pressure">0.70</span></label><input type="range" id="ov-eco-pressure" min="0.2" max="1.0" step="0.05" value="0.7"></div>
+                    </div>
+                </div>
+                <div id="ov-radial-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·冰晶 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>结晶密度 <span id="ov-val-rad-density">1.0</span></label><input type="range" id="ov-rad-density" min="0.3" max="2.5" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>冰花尖锐 <span id="ov-val-rad-spike">1.0</span></label><input type="range" id="ov-rad-spike" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group full-width"><label>渗透融合 <span id="ov-val-rad-bleed">1.0</span></label><input type="range" id="ov-rad-bleed" min="0.3" max="2.5" step="0.1" value="1.0"></div>
+                    </div>
+                </div>
+                <div id="ov-mineral-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·矿染 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>纹理方向 <span id="ov-val-min-dir">0</span>°</label><input type="range" id="ov-min-dir" min="0" max="180" step="5" value="0"></div>
+                        <div class="control-group"><label>扰动强度 <span id="ov-val-min-distort">1.0</span></label><input type="range" id="ov-min-distort" min="0.2" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group full-width"><label>边缘渗染 <span id="ov-val-min-edge">0.15</span></label><input type="range" id="ov-min-edge" min="0.02" max="0.40" step="0.02" value="0.15"></div>
+                    </div>
+                </div>
+                <div id="ov-acidwash-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·酸洗 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>漂白强度 <span id="ov-val-acid-bleach">0.85</span></label><input type="range" id="ov-acid-bleach" min="0.3" max="1.0" step="0.05" value="0.85"></div>
+                        <div class="control-group"><label>斑块大小 <span id="ov-val-acid-patch">1.0</span></label><input type="range" id="ov-acid-patch" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group full-width"><label>纤维纹理 <span id="ov-val-acid-fiber">0.40</span></label><input type="range" id="ov-acid-fiber" min="0.0" max="1.0" step="0.05" value="0.4"></div>
+                    </div>
+                </div>
+                <div id="ov-marble-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·大理石 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>纹理密度 <span id="ov-val-mrb-veins">1.0</span></label><input type="range" id="ov-mrb-veins" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>墨流波动 <span id="ov-val-mrb-wave">1.0</span></label><input type="range" id="ov-mrb-wave" min="0.2" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>线条粗细 <span id="ov-val-mrb-width">1.0</span></label><input type="range" id="ov-mrb-width" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>旋涡扰动 <span id="ov-val-mrb-swirl">0.0</span></label><input type="range" id="ov-mrb-swirl" min="0.0" max="2.0" step="0.1" value="0.0"></div>
+                    </div>
+                </div>
+                <div id="ov-splatter-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·泼墨 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>泼墨量 <span id="ov-val-spl-amount">1.0</span></label><input type="range" id="ov-spl-amount" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>飞溅距离 <span id="ov-val-spl-splash">1.0</span></label><input type="range" id="ov-spl-splash" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group full-width"><label>拖尾流线 <span id="ov-val-spl-drip">1.0</span></label><input type="range" id="ov-spl-drip" min="0.0" max="3.0" step="0.1" value="1.0"></div>
+                    </div>
+                </div>
+                <div id="ov-aura-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·水彩 —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>颜料浓度 <span id="ov-val-aura-int">0.85</span></label><input type="range" id="ov-aura-int" min="0.2" max="1.0" step="0.05" value="0.85"></div>
+                        <div class="control-group"><label>色团数量 <span id="ov-val-aura-blobs">5</span></label><input type="range" id="ov-aura-blobs" min="2" max="12" step="1" value="5"></div>
+                        <div class="control-group"><label>扩散半径 <span id="ov-val-aura-spread">1.0</span></label><input type="range" id="ov-aura-spread" min="0.3" max="2.5" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>水迹边缘 <span id="ov-val-aura-edge">0.00</span></label><input type="range" id="ov-aura-edge" min="0.0" max="1.0" step="0.05" value="0.0"></div>
+                    </div>
+                </div>
+                <div id="ov-shibori-controls" class="technique-controls">
+                    <p class="technique-header">— 叠染·Shibori —</p>
+                    <div class="param-grid">
+                        <div class="control-group"><label>条纹密度 <span id="ov-val-density">1.0</span></label><input type="range" id="ov-shibori-density" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>晕染扩散 <span id="ov-val-softness">1.0</span></label><input type="range" id="ov-shibori-softness" min="0.3" max="3.0" step="0.1" value="1.0"></div>
+                        <div class="control-group"><label>裙摆过渡 <span id="ov-val-border">0.20</span></label><input type="range" id="ov-shibori-border" min="0.05" max="0.50" step="0.05" value="0.20"></div>
+                        <div class="control-group"><label>上下对齐 <span id="ov-val-alignment">0.00</span></label><input type="range" id="ov-shibori-alignment" min="0" max="0.99" step="0.01" value="0"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ━━ 5. 操作 ━━ -->
+    <div class="section">
+        <div class="section-header collapsed" onclick="this.classList.toggle('collapsed')">
+            <span class="section-title">⚙️ 操作 Actions</span>
+            <span class="section-arrow">▼</span>
+        </div>
+        <div class="section-body">
+            <div class="control-group">
+                <input type="file" id="model-upload" accept=".glb,.gltf,.obj" style="display:none;">
+                <button class="action-btn btn-dark" onclick="document.getElementById('model-upload').click()">☁️ 上传模型 .obj / .glb</button>
+            </div>
+            <button class="action-btn btn-green" id="open-export-btn">📐 导出 UV 贴图 Export Texture</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ 导出弹窗 ═══ -->
+<div class="modal-overlay" id="export-modal">
+    <div class="modal">
+        <h2>📐 导出 UV 贴图</h2>
+        <p class="modal-sub">预览当前染色纹理，附带自然语言 Prompt 一同导出。</p>
+        <div class="modal-preview-row">
+            <div class="modal-preview-box" id="preview-box"></div>
+            <div class="modal-info">
+                <div>
+                    <div class="info-label">当前工艺</div>
+                    <div class="info-value" id="export-technique">—</div>
+                    <div class="info-label">色彩方案</div>
+                    <div class="info-value" id="export-colors">—</div>
+                    <div class="info-label">面料 / 叠染</div>
+                    <div class="info-value" id="export-fabric">—</div>
+                </div>
+            </div>
+        </div>
+        <label class="modal-label">✍️ 生产 Prompt（自然语言描述）</label>
+        <textarea id="export-prompt" placeholder=""></textarea>
+        <div class="modal-row">
+            <div class="control-group"><label class="modal-label">分辨率</label>
+                <select id="export-res"><option value="1024">1024px</option><option value="2048" selected>2048px</option><option value="4096">4096px</option></select>
+            </div>
+            <div class="control-group"><label class="modal-label">格式</label>
+                <select id="export-format"><option value="png" selected>PNG</option><option value="jpg">JPEG</option></select>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" id="export-cancel">取消</button>
+            <button class="btn-export-uv" id="export-uv-only">💾 仅导出贴图</button>
+            <button class="btn-export-prompt" id="export-with-prompt">📦 贴图 + Prompt</button>
+        </div>
+    </div>
+</div>
+
+<div class="hint">✦ 拖拽旋转 · 滚轮缩放 ✦</div>
+<div id="canvas-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+
+<script>
+'use strict';
+const PRELOADED_MODEL_URL = './model1.glb';
+
+// =====================================================
+// 0. DOM 引用 & 工具
+// =====================================================
+const DOM = {
+    container:       document.getElementById('canvas-container'),
+    fabricType:      document.getElementById('fabric-type'),
+    dyePattern:      document.getElementById('dye-pattern'),
+    dyeScale:        document.getElementById('dye-scale'),
+    valScale:        document.getElementById('val-scale'),
+    color1:          document.getElementById('color1'),
+    color2:          document.getElementById('color2'),
+    color3:          document.getElementById('color3'),
+    color3Container: document.getElementById('color3-container'),
+    toggleColorBtn:  document.getElementById('toggle-color-btn'),
+    refreshBtn:      document.getElementById('refresh-pattern-btn'),
+    autoRotate:      document.getElementById('auto-rotate'),
+    modelUpload:     document.getElementById('model-upload'),
+    // Shibori
+    shiboriDensity:  document.getElementById('shibori-density'),
+    shiboriSoftness: document.getElementById('shibori-softness'),
+    shiboriBorder:   document.getElementById('shibori-border'),
+    shiboriAlign:    document.getElementById('shibori-alignment'),
+    valDensity:      document.getElementById('val-density'),
+    valSoftness:     document.getElementById('val-softness'),
+    valBorder:       document.getElementById('val-border'),
+    valAlignment:    document.getElementById('val-alignment'),
+    gradAngle: document.getElementById('grad-angle'), gradRipple: document.getElementById('grad-ripple'), gradSharp: document.getElementById('grad-sharp'),
+    ecoCount: document.getElementById('eco-count'), ecoStain: document.getElementById('eco-stain'), ecoPressure: document.getElementById('eco-pressure'),
+    radDensity: document.getElementById('rad-density'), radSpike: document.getElementById('rad-spike'), radBleed: document.getElementById('rad-bleed'),
+    minDir: document.getElementById('min-dir'), minDistort: document.getElementById('min-distort'), minEdge: document.getElementById('min-edge'),
+    acidBleach: document.getElementById('acid-bleach'), acidPatch: document.getElementById('acid-patch'), acidFiber: document.getElementById('acid-fiber'),
+    mrbVeins: document.getElementById('mrb-veins'), mrbWave: document.getElementById('mrb-wave'), mrbWidth: document.getElementById('mrb-width'), mrbSwirl: document.getElementById('mrb-swirl'),
+    splAmount: document.getElementById('spl-amount'), splSplash: document.getElementById('spl-splash'), splDrip: document.getElementById('spl-drip'),
+    auraInt: document.getElementById('aura-int'), auraBlobs: document.getElementById('aura-blobs'), auraSpread: document.getElementById('aura-spread'), auraEdge: document.getElementById('aura-edge'),
+    // Overlay
+    overlayEnabled: document.getElementById('overlay-enabled'),
+    overlayPanel: document.getElementById('overlay-panel'),
+    overlayPattern: document.getElementById('overlay-pattern'),
+    overlayBlend: document.getElementById('overlay-blend'),
+    overlayOpacity: document.getElementById('overlay-opacity'),
+    overlayScale: document.getElementById('overlay-scale'),
+    overlayC1: document.getElementById('overlay-c1'),
+    overlayC2: document.getElementById('overlay-c2'),
+};
+
+function hexToRgb(hex) { return { r:parseInt(hex.slice(1,3),16), g:parseInt(hex.slice(3,5),16), b:parseInt(hex.slice(5,7),16) }; }
+function hexToRgba(hex,a) { const {r,g,b}=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+function lerp(t,a,b) { return a+t*(b-a); }
+function fade(t) { return t*t*t*(t*(t*6-15)+10); }
+function clamp01(v) { return Math.max(0,Math.min(1,v)); }
+function clamp255(v) { return Math.max(0,Math.min(255,v)); }
+function makeRng(seed) { let s=(seed*1000)>>>0; return ()=>{ s=Math.imul(1664525,s)+1013904223>>>0; return s/0x100000000; }; }
+
+// =====================================================
+// 1. Three.js 场景
+// =====================================================
+const scene = new THREE.Scene(); scene.background = null;
+const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0, 0, 13);
+let renderer;
+try { renderer = new THREE.WebGLRenderer({alpha:true,antialias:false,powerPreference:'low-power'}); } catch(e) { renderer = new THREE.WebGLRenderer({alpha:true}); }
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+DOM.container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.05;
+controls.minDistance=5; controls.maxDistance=25;
+controls.target.set(0,0,0);
+let isInteracting=false;
+controls.addEventListener('start',()=>isInteracting=true);
+controls.addEventListener('end',()=>isInteracting=false);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x444444,0.7)).position.set(0,20,0);
+const dirLight=new THREE.DirectionalLight(0xffffff,0.6);
+dirLight.position.set(8,10,10); dirLight.castShadow=false;
+dirLight.shadow.mapSize.set(1024,1024);
+dirLight.shadow.camera.near=0.5; dirLight.shadow.camera.far=50;
+dirLight.shadow.camera.left=dirLight.shadow.camera.bottom=-5;
+dirLight.shadow.camera.right=dirLight.shadow.camera.top=5;
+dirLight.shadow.bias=-0.001; scene.add(dirLight);
+scene.add(new THREE.DirectionalLight(0xcceeff,0.3)).position.set(-8,5,-5);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,50),new THREE.ShadowMaterial({opacity:0.10}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-3.8; floor.receiveShadow=false; scene.add(floor);
+let currentModel=null;
+
+// =====================================================
+// 2. 噪声
+// =====================================================
+const perm=new Uint8Array(512);
+for(let i=0;i<256;i++) perm[i]=perm[i+256]=Math.floor(Math.random()*256);
+function valNoise(x,y){const X=Math.floor(x)&255,Y=Math.floor(y)&255;x-=Math.floor(x);y-=Math.floor(y);const u=fade(x),v=fade(y);const A=perm[X]+Y,AA=perm[perm[A]],AB=perm[perm[A+1]];const B=perm[X+1]+Y,BA=perm[perm[B]],BB=perm[perm[B+1]];return lerp(v,lerp(u,AA,BA),lerp(u,AB,BB))/255.0;}
+function fbm(x,y,oct=4){let v=0,a=0.5;for(let i=0;i<oct;i++){v+=a*valNoise(x,y);x=x*2+100;y=y*2+100;a*=0.5;}return v;}
+
+// =====================================================
+// 3. 面料法线贴图
+// =====================================================
+const bumpMaps={};
+(function initBumpMaps(){
+    const S=256,cfgs={cotton:(x,y)=>(Math.sin(x*1.5)*Math.sin(y*1.5)*0.5+0.5)*200+Math.random()*55,silk:(x,y)=>Math.sin(y*2)*10+240+Math.random()*5,velvet:()=>Math.random()*255,nylon:(x,y)=>(Math.sin(x*3)*Math.sin(y*3)*0.5+0.5)*50+200+Math.random()*10,denim:(x,y)=>(Math.sin((x+y)*1.2)*0.5+0.5)*180+Math.random()*75},reps={cotton:45,silk:20,velvet:20,nylon:12,denim:80};
+    Object.entries(cfgs).forEach(([t,fn])=>{const c=document.createElement('canvas');c.width=c.height=S;const ctx=c.getContext('2d',{willReadFrequently:true});const d=ctx.createImageData(S,S);for(let i=0;i<d.data.length;i+=4){const x=(i/4)%S,y=Math.floor((i/4)/S),v=Math.max(0,Math.min(255,fn(x,y)));d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255;}ctx.putImageData(d,0,0);const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;const r=reps[t];tex.repeat.set(r,r);bumpMaps[t]=tex;});
+})();
+
+// =====================================================
+// 4. 染色画布系统 — 支持底染 + 叠染
+// =====================================================
+const DYE_SIZE=1024, PROC_SIZE=512;
+
+// 底染层画布
+const baseCanvas=document.createElement('canvas'); baseCanvas.width=baseCanvas.height=DYE_SIZE;
+const baseCtx=baseCanvas.getContext('2d',{willReadFrequently:true});
+
+// 叠染层画布
+const overlayCanvas=document.createElement('canvas'); overlayCanvas.width=overlayCanvas.height=DYE_SIZE;
+const overlayCtx=overlayCanvas.getContext('2d',{willReadFrequently:true});
+
+// 最终合成画布 (= dyeTexture 的来源)
+const dyeCanvas=document.createElement('canvas'); dyeCanvas.width=dyeCanvas.height=DYE_SIZE;
+const dyeCtx=dyeCanvas.getContext('2d',{willReadFrequently:true});
+const dyeTexture=new THREE.CanvasTexture(dyeCanvas);
+dyeTexture.wrapS=THREE.RepeatWrapping; dyeTexture.wrapT=THREE.ClampToEdgeWrapping;
+
+// 离屏处理
+const procCanvas=document.createElement('canvas'); procCanvas.width=procCanvas.height=PROC_SIZE;
+const procCtx=procCanvas.getContext('2d',{willReadFrequently:true});
+const procImgData=procCtx.createImageData(PROC_SIZE,PROC_SIZE);
+
+const grainCanvas=document.createElement('canvas'); grainCanvas.width=grainCanvas.height=128;
+const gCtx=grainCanvas.getContext('2d'); const gData=gCtx.createImageData(128,128);
+for(let i=0;i<gData.data.length;i+=4){const v=Math.random()*255;gData.data[i]=gData.data[i+1]=gData.data[i+2]=v;gData.data[i+3]=12;}
+gCtx.putImageData(gData,0,0);
+let grainPatternBase=null, grainPatternOverlay=null;
+let ecoprintSeed=Math.random()*10000, globalSeed=Math.random()*10000;
+
+// =====================================================
+// 5. 染色工艺渲染 — 通用绘制接口
+// =====================================================
+// drawDye now accepts prefix: '' for base layer, 'ov-' for overlay layer
+// It reads params from DOM elements with the given prefix
+function drawDye(ctx, canvas, pattern, c1, c2, c3, scale, prefix) {
+    if(!grainPatternBase) grainPatternBase = baseCtx.createPattern(grainCanvas, 'repeat');
+    if(!grainPatternOverlay) grainPatternOverlay = overlayCtx.createPattern(grainCanvas, 'repeat');
+    ctx.filter='none'; ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1.0;
+    ctx.clearRect(0,0,DYE_SIZE,DYE_SIZE);
+
+    const P = (id, fallback) => { const el=document.getElementById(prefix+id); return el ? parseFloat(el.value) : fallback; };
+    const Pi = (id, fallback) => { const el=document.getElementById(prefix+id); return el ? parseInt(el.value) : fallback; };
+
+    switch(pattern) {
+        case 'solid':    ctx.fillStyle=c1; ctx.fillRect(0,0,DYE_SIZE,DYE_SIZE); break;
+        case 'gradient': drawGradient(ctx,c1,c2,c3,scale, P('grad-angle',0), P('grad-ripple',0.3), P('grad-sharp',0.5)); break;
+        case 'ecoprint': drawEcoprint(ctx,c1,c2,c3,scale, Pi('eco-count',12), P('eco-stain',0.5), P('eco-pressure',0.7)); break;
+        case 'radial':   drawRadial(ctx,c1,c2,c3,scale, P('rad-density',1), P('rad-spike',1), P('rad-bleed',1)); break;
+        case 'mineral':  drawMineral(ctx,c1,c2,c3,scale, P('min-dir',0), P('min-distort',1), P('min-edge',0.15)); break;
+        case 'acidwash': drawAcidwash(ctx,c1,c2,c3,scale, P('acid-bleach',0.85), P('acid-patch',1), P('acid-fiber',0.4)); break;
+        case 'marble':   drawMarble(ctx,c1,c2,c3,scale, P('mrb-veins',1), P('mrb-wave',1), P('mrb-width',1), P('mrb-swirl',0)); break;
+        case 'splatter': drawSplatter(ctx,c1,c2,c3,scale, P('spl-amount',1), P('spl-splash',1), P('spl-drip',1)); break;
+        case 'aura':     drawAura(ctx,c1,c2,c3,scale, P('aura-int',0.85), Pi('aura-blobs',5), P('aura-spread',1), P('aura-edge',0)); break;
+        case 'shibori':  drawShiboriStorm(ctx,c1,c2,c3,scale, P('shibori-density',1), P('shibori-softness',1), P('shibori-border',0.2), P('shibori-alignment',0)); break;
+        case 'shibori-tide': drawShiboriTide(ctx,c1,c2,c3,scale, P('shibori-density',1), P('shibori-softness',1), P('shibori-border',0.2), P('shibori-alignment',0)); break;
+    }
+    ctx.filter='none';
+}
+
+// 合成：底染 + 叠染 → dyeCanvas
+function composeLayers() {
+    dyeCtx.clearRect(0,0,DYE_SIZE,DYE_SIZE);
+    // 画底染
+    dyeCtx.globalCompositeOperation='source-over';
+    dyeCtx.globalAlpha=1.0;
+    dyeCtx.drawImage(baseCanvas, 0, 0);
+
+    // 叠染
+    if (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none') {
+        const isTransparent = document.getElementById('overlay-c1-transparent').checked;
+        const blendMode = DOM.overlayBlend.value;
+        const opacity = parseFloat(DOM.overlayOpacity.value);
+
+        if (isTransparent) {
+            // 去白背景：将叠染层中接近白色的区域 alpha 设为 0，
+            // 纹理区域根据与白色的偏离程度设置 alpha
+            const ovData = overlayCtx.getImageData(0, 0, DYE_SIZE, DYE_SIZE);
+            const d = ovData.data;
+            for (let i = 0; i < d.length; i += 4) {
+                const r = d[i], g = d[i+1], b = d[i+2];
+                // 计算与白色的距离（归一化到 0-1）
+                const dist = Math.sqrt((255-r)*(255-r) + (255-g)*(255-g) + (255-b)*(255-b)) / 441.67; // 441.67 = sqrt(255^2*3)
+                // 用曲线增强对比：轻微偏离白色的区域快速变不透明
+                const alpha = Math.min(255, Math.round(Math.pow(dist, 0.6) * 255));
+                d[i+3] = alpha;
+            }
+            overlayCtx.putImageData(ovData, 0, 0);
+        }
+
+        dyeCtx.globalCompositeOperation = blendMode;
+        dyeCtx.globalAlpha = opacity;
+        dyeCtx.drawImage(overlayCanvas, 0, 0);
+        dyeCtx.globalCompositeOperation='source-over';
+        dyeCtx.globalAlpha=1.0;
+    }
+
+    makeSeamless();
+    dyeTexture.needsUpdate=true;
+}
+
+function updateDye() {
+    const c1=DOM.color1.value, c2=DOM.color2.value;
+    const isThree=DOM.color3Container.style.display==='block';
+    const c3=isThree?DOM.color3.value:c2;
+    const scale=parseFloat(DOM.dyeScale.value);
+
+    // 底染层 (prefix = '' reads from base DOM ids)
+    drawDye(baseCtx, baseCanvas, DOM.dyePattern.value, c1, c2, c3, scale, '');
+
+    // 叠染层 (prefix = 'ov-' reads from overlay DOM ids)
+    if (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none') {
+        const isTransparent = document.getElementById('overlay-c1-transparent').checked;
+        // 透明模式：强制主色为白色，后续合成阶段去白
+        const oc1 = isTransparent ? '#ffffff' : DOM.overlayC1.value;
+        const oc2=DOM.overlayC2.value;
+        const oScale=parseFloat(DOM.overlayScale.value);
+        drawDye(overlayCtx, overlayCanvas, DOM.overlayPattern.value, oc1, oc2, oc2, oScale, 'ov-');
+    }
+
+    composeLayers();
+}
+
+function makeSeamless() {
+    const blendW=Math.floor(DYE_SIZE*0.015); if(blendW<2) return; // 缩小到1.5%安全网
+    const imgData=dyeCtx.getImageData(0,0,DYE_SIZE,DYE_SIZE);
+    const d=imgData.data, w=DYE_SIZE, h=DYE_SIZE;
+    for(let y=0;y<h;y++){
+        for(let bx=0;bx<blendW;bx++){
+            const t=bx/blendW, factor=1-t*t*(3-2*t);
+            const li=(y*w+bx)*4, ri=(y*w+(w-1-bx))*4;
+            const lR=d[li],lG=d[li+1],lB=d[li+2];
+            const rR=d[ri],rG=d[ri+1],rB=d[ri+2];
+            d[li]=Math.round(lR+(rR-lR)*factor); d[li+1]=Math.round(lG+(rG-lG)*factor); d[li+2]=Math.round(lB+(rB-lB)*factor);
+            d[ri]=Math.round(rR+(lR-rR)*factor); d[ri+1]=Math.round(rG+(lG-rG)*factor); d[ri+2]=Math.round(rB+(lB-rB)*factor);
+        }
+    }
+    dyeCtx.putImageData(imgData,0,0);
+}
+
+// =====================================================
+// 5a. 各工艺渲染函数 — 水平无缝循环版
+// =====================================================
+function procToCtx(ctx) { ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; ctx.drawImage(procCanvas,0,0,DYE_SIZE,DYE_SIZE); }
+
+// 核心：水平循环噪声采样
+// 将 x 坐标映射到圆环上 (cos,sin)，使 x=0 和 x=w 产生相同的噪声值
+function tileNoise(nx, ny, freqX, freqY) {
+    // nx: 0~1 归一化 x (水平)，ny: 原始 y 坐标
+    // 将 nx 映射到圆环: (cos(2π·nx), sin(2π·nx)) × freqX
+    const angle = nx * Math.PI * 2;
+    const cx = Math.cos(angle) * freqX;
+    const sx = Math.sin(angle) * freqX;
+    return valNoise(cx + 100, sx + ny * freqY + 100);
+}
+function tileFbm(nx, ny, freqX, freqY, octaves) {
+    let v = 0, a = 0.5;
+    const angle = nx * Math.PI * 2;
+    let cxb = Math.cos(angle) * freqX;
+    let sxb = Math.sin(angle) * freqX;
+    let yb = ny * freqY;
+    for (let i = 0; i < (octaves||4); i++) {
+        // 3D noise approximated: sample at (cos, sin, y)
+        v += a * valNoise(cxb + 100, sxb + yb + 100);
+        cxb = cxb * 2 + 73.7; sxb = sxb * 2 + 41.3; yb = yb * 2 + 100;
+        a *= 0.5;
+    }
+    return v;
+}
+
+function drawGradient(ctx,c1,c2,c3,uiScale, ang,rip,shp) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);
+    const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data;
+    const angR=ang*Math.PI/180, cosA=Math.cos(angR), sinA=Math.sin(angR);
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){
+        const idx=(y*w+x)*4, nx=x/w, ny=y/h;
+        const cx=nx-0.5,cy=ny-0.5;
+        const rot=cx*sinA-cy*cosA+0.5;
+        // 用循环噪声做波纹扰动
+        const warp=tileFbm(nx,ny,3,3,3)*rip*0.3;
+        let t=clamp01((rot+warp)*uiScale);
+        t=Math.pow(t,1/shp);
+        let r,g,b;
+        if(t<0.5){const s=t*2;r=lerp(s,rgb1.r,rgb2.r);g=lerp(s,rgb1.g,rgb2.g);b=lerp(s,rgb1.b,rgb2.b);}
+        else{const s=(t-0.5)*2;r=lerp(s,rgb2.r,rgb3.r);g=lerp(s,rgb2.g,rgb3.g);b=lerp(s,rgb2.b,rgb3.b);}
+        const gr=(Math.random()-0.5)*12;
+        data[idx]=clamp255(r+gr);data[idx+1]=clamp255(g+gr);data[idx+2]=clamp255(b+gr);data[idx+3]=255;
+    }}
+    procCtx.putImageData(procImgData,0,0); procToCtx(ctx);
+}
+
+function drawEcoprint(ctx,c1,c2,c3,uiScale, leafCount,stainStr,pressure) {
+    const rng=makeRng(ecoprintSeed);
+    ctx.fillStyle=c1; ctx.fillRect(0,0,DYE_SIZE,DYE_SIZE);
+    ctx.globalCompositeOperation='multiply';
+    // 水渍层 — 靠近边缘的在对面也画一次
+    for(let i=0;i<Math.floor(30*stainStr);i++){const cx2=rng()*DYE_SIZE,cy2=rng()*DYE_SIZE,r=rng()*200*uiScale+50,a=rng()*0.15*stainStr+0.05;
+        const drawStain=(ox)=>{const grd=ctx.createRadialGradient(cx2+ox,cy2,0,cx2+ox,cy2,r);grd.addColorStop(0,hexToRgba(c2,a));grd.addColorStop(1,hexToRgba(c2,0));ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx2+ox,cy2,r,0,Math.PI*2);ctx.fill();};
+        drawStain(0);
+        if(cx2<r) drawStain(DYE_SIZE);
+        if(cx2>DYE_SIZE-r) drawStain(-DYE_SIZE);
+    }
+    const drawLeaflet=(cx2,cy2,len,w2,ang,cm,cv,ghost)=>{ctx.save();ctx.translate(cx2,cy2);ctx.rotate(ang);ctx.globalAlpha=ghost?0.15:rng()*0.4*pressure+0.6*pressure;const w3=ghost?w2*1.3:w2;const grad=ctx.createLinearGradient(0,0,len,0);grad.addColorStop(0,cm);grad.addColorStop(0.8,cm);grad.addColorStop(1,hexToRgba(cm,0.1));const st=12;ctx.beginPath();ctx.moveTo(0,0);for(let i=0;i<=st;i++){const t=i/st,hw=w3*Math.sin(t*Math.PI)*(1-t*0.2),sr=ghost?0:Math.abs(Math.sin(t*Math.PI*10))*3.5*uiScale;ctx.lineTo(t*len,hw+sr);}for(let i=st;i>=0;i--){const t=i/st,hw=w3*Math.sin(t*Math.PI)*(1-t*0.2),sr=ghost?0:Math.abs(Math.sin(t*Math.PI*10))*3.5*uiScale;ctx.lineTo(t*len,-hw-sr);}ctx.closePath();ctx.fillStyle=grad;ctx.fill();if(!ghost){ctx.strokeStyle=cv;ctx.lineWidth=1.2*uiScale;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(len*0.5,w2*0.1,len*0.9,0);ctx.stroke();ctx.lineWidth=0.6*uiScale;for(let i=2;i<st-2;i+=2){const t=i/st,vl=w2*Math.sin(t*Math.PI)*0.8;ctx.beginPath();ctx.moveTo(t*len,t*w2*0.05);ctx.lineTo(t*len+vl*0.6,vl*0.9);ctx.stroke();ctx.beginPath();ctx.moveTo(t*len,-t*w2*0.05);ctx.lineTo(t*len+vl*0.6,-vl*0.9);ctx.stroke();}}ctx.restore();};
+    const drawPinnate=(sx,sy,len,sc,ang,cm,cv)=>{ctx.save();ctx.translate(sx,sy);ctx.rotate(ang);const pairs=5,sp=len/(pairs+1.5);const ds=(ghost)=>{ctx.strokeStyle=cm;ctx.lineWidth=(ghost?6:2.5)*sc;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(len*0.5,len*0.05,len,0);ctx.stroke();for(let i=1;i<=pairs;i++){const cx3=i*sp,cy3=(cx3/len)*len*0.1,ll=(30+Math.sin(i/pairs*Math.PI)*70)*sc,lw=ll*0.35,ao=1-(i/pairs)*0.4;drawLeaflet(cx3,cy3,ll,lw,-ao,cm,cv,ghost);drawLeaflet(cx3,cy3,ll,lw,ao,cm,cv,ghost);}drawLeaflet(len,0,80*sc,30*sc,0,cm,cv,ghost);};ctx.globalCompositeOperation='multiply';ds(true);ds(false);ctx.restore();};
+    const leafDefs=[];for(let i=0;i<leafCount;i++){leafDefs.push({x:rng()*1100-50,y:rng()*1100-50,len:(rng()*350+200)*uiScale,scale:(rng()*0.8+0.5)*uiScale,angle:rng()*Math.PI*2-Math.PI,swap:rng()>0.5});}
+    ctx.globalCompositeOperation='multiply';
+    // 叶片：在原位画一次，靠近左右边缘的在对侧也画一次
+    const edgeM = 350 * uiScale; // 叶片最大延伸距离
+    leafDefs.forEach(({x,y,len,scale,angle,swap})=>{
+        const cm=swap?c2:c3, cv=swap?c3:c2;
+        drawPinnate(x,y,len,scale,angle,cm,cv);
+        if(x < edgeM) drawPinnate(x+DYE_SIZE,y,len,scale,angle,cm,cv);
+        if(x > DYE_SIZE-edgeM) drawPinnate(x-DYE_SIZE,y,len,scale,angle,cm,cv);
+    });
+    ctx.globalCompositeOperation='source-over';ctx.fillStyle=(ctx===baseCtx?grainPatternBase:grainPatternOverlay);ctx.fillRect(0,0,DYE_SIZE,DYE_SIZE);ctx.globalAlpha=1.0;
+}
+
+function drawRadial(ctx,c1,c2,c3,uiScale, dM,sM,bM) {
+    // 冰染已有水平 wrap (dx>w/2 → dx-=w)，只需确保噪声也 wrap
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data;
+    const numPts=Math.floor(140*uiScale*dM),pts=[];
+    for(let i=0;i<numPts;i++){const mR=(Math.random()*15+6)*uiScale*bM;pts.push({x:Math.random()*w,y:Math.random()*h,ct:i%2===0?2:3,sx:Math.random()*1000,sy:Math.random()*1000,bR:mR,mR:mR*3.5});}
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){let w2=0,w3=0;for(const pt of pts){let dx=x-pt.x;if(dx>w/2)dx-=w;else if(dx<-w/2)dx+=w;if(Math.abs(dx)>pt.mR)continue;let dy=y-pt.y;if(dy>h/2)dy-=h;else if(dy<-h/2)dy+=h;if(Math.abs(dy)>pt.mR)continue;const dSq=dx*dx+dy*dy;if(dSq>pt.mR*pt.mR)continue;const dist=Math.sqrt(dSq),ang=Math.atan2(dy,dx),weave=1+0.35*Math.abs(Math.sin(ang*2)),nx2=Math.cos(ang)*12+pt.sx,ny2=Math.sin(ang)*12+pt.sy,n1=valNoise(nx2,ny2),n2=valNoise(nx2*2,ny2*2),spike=Math.pow(n1*0.7+n2*0.3,3*sM),effD=(dist*weave)/(0.2+2*spike),inten=Math.pow(Math.max(0,1-effD/pt.bR),1.6);if(inten>0){if(pt.ct===2)w2+=inten;else w3+=inten;}}
+    const idx=(y*w+x)*4,tot=w2+w3;if(tot>0){const al=1-Math.exp(-tot*1.5),f2=w2/tot,f3=w3/tot,cR=rgb2.r*f2+rgb3.r*f3,cG=rgb2.g*f2+rgb3.g*f3,cB=rgb2.b*f2+rgb3.b*f3,dk=1-0.25*(1-Math.abs(f2-f3))*al,gr=(Math.random()-0.5)*15*al;data[idx]=clamp255(lerp(al,rgb1.r,cR*dk)+gr);data[idx+1]=clamp255(lerp(al,rgb1.g,cG*dk)+gr);data[idx+2]=clamp255(lerp(al,rgb1.b,cB*dk)+gr);}else{data[idx]=rgb1.r;data[idx+1]=rgb1.g;data[idx+2]=rgb1.b;}data[idx+3]=255;}}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+function drawMineral(ctx,c1,c2,c3,uiScale, dirDeg,distM,edgeB) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data;
+    const dR=dirDeg*Math.PI/180,cosD=Math.cos(dR),sinD=Math.sin(dR),sx=0.015/uiScale,sy=0.003/uiScale;
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){const idx=(y*w+x)*4;
+        const nx=x/w, ny=y/h;
+        // 循环噪声：扰动和主噪声都用 tileFbm
+        const dist=tileFbm(nx,ny,2.0*sx*w*0.5,sy*0.5,3)*50*distM;
+        const nxR=nx*cosD-ny*sinD, nyR=nx*sinD+ny*cosD;
+        const n=tileFbm(nx, nyR+dist*sy, 4.0, 5.0*sy*h, 5);
+        let r,g,b;if(n<0.45-edgeB){r=rgb1.r;g=rgb1.g;b=rgb1.b;}else if(n>0.55+edgeB){r=rgb2.r;g=rgb2.g;b=rgb2.b;}else if(n<0.5){const t=(n-(0.45-edgeB))/(0.05+edgeB);r=lerp(t,rgb1.r,rgb3.r);g=lerp(t,rgb1.g,rgb3.g);b=lerp(t,rgb1.b,rgb3.b);}else{const t=(n-0.5)/(0.05+edgeB);r=lerp(t,rgb3.r,rgb2.r);g=lerp(t,rgb3.g,rgb2.g);b=lerp(t,rgb3.b,rgb2.b);}
+        const sat=0.7+0.6*tileFbm(nx,ny,1.5,1.5,2),gr=(Math.random()-0.5)*25;
+        data[idx]=clamp255(r*sat+gr);data[idx+1]=clamp255(g*sat+gr);data[idx+2]=clamp255(b*sat+gr);data[idx+3]=255;
+    }}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+function drawAcidwash(ctx,c1,c2,c3,uiScale, bStr,pSz,fStr) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data,freq=0.025/(uiScale*pSz);
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){const idx=(y*w+x)*4;
+        const nx=x/w, ny=y/h;
+        const n1=tileFbm(nx,ny, 3.0*freq*w, freq*h*3, 3);
+        const n2=tileFbm(nx,ny, 12.0*freq*w, freq*h*12, 2);
+        const bleach=n1>0.52?Math.pow((n1-0.52)/0.48,1.2):0,fiber=n2>0.60?Math.pow((n2-0.60)/0.40,2)*fStr:0,total=Math.min(1,bleach+fiber),gr=(Math.random()-0.5)*18;const bR=lerp(0.3,255,rgb2.r),bG=lerp(0.3,255,rgb2.g),bB=lerp(0.3,255,rgb2.b);data[idx]=clamp255(rgb1.r+total*(bR-rgb1.r)*bStr+gr);data[idx+1]=clamp255(rgb1.g+total*(bG-rgb1.g)*bStr+gr);data[idx+2]=clamp255(rgb1.b+total*(bB-rgb1.b)*bStr+gr);data[idx+3]=255;
+    }}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+function drawMarble(ctx,c1,c2,c3,uiScale, vM,wM,wdM,swA) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data;
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){const idx=(y*w+x)*4;let nx=x/w,ny=y/h;
+        if(swA>0){const cx2=nx-0.5,cy2=ny-0.5,dist=Math.sqrt(cx2*cx2+cy2*cy2),ang=Math.atan2(cy2,cx2)+swA*Math.exp(-dist*3)*2;nx=((0.5+Math.cos(ang)*dist)%1+1)%1;ny=0.5+Math.sin(ang)*dist;}
+        const f1=3*vM/uiScale,f2=7*vM/uiScale,a1=0.15*wM*uiScale,a2=0.05*wM*uiScale;
+        const warp=tileFbm(nx,ny,4,4,3)*0.1*wM;
+        // 用角度映射做水平循环：sin 接受角度，nx 映射到 2π
+        const theta=nx*Math.PI*2;
+        const v1=Math.sin((ny+warp)*f1*Math.PI*2+theta)*a1;
+        const v2=Math.sin((ny+warp)*f2*Math.PI*2+theta*2+1.5)*a2;
+        const comb=(theta/(Math.PI*2))+v1+v2;
+        const lineVal=Math.abs(Math.sin(comb*Math.PI*8*vM)),lineTh=0.15*wdM;
+        let r,g,b;if(lineVal<lineTh){const t=lineVal/lineTh,ct=(Math.sin(ny*3+theta)+1)*0.5;const cr=lerp(ct,rgb2.r,rgb3.r),cg=lerp(ct,rgb2.g,rgb3.g),cb=lerp(ct,rgb2.b,rgb3.b);r=lerp(t,cr,rgb1.r);g=lerp(t,cg,rgb1.g);b=lerp(t,cb,rgb1.b);}else{const sub=tileFbm(nx,ny,10,10,2)*0.08;r=rgb1.r*(1+sub);g=rgb1.g*(1+sub);b=rgb1.b*(1+sub);}
+        const gr=(Math.random()-0.5)*10;data[idx]=clamp255(r+gr);data[idx+1]=clamp255(g+gr);data[idx+2]=clamp255(b+gr);data[idx+3]=255;
+    }}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+function drawSplatter(ctx,c1,c2,c3,uiScale, aM,spM,drM) {
+    ctx.fillStyle=c1;ctx.fillRect(0,0,DYE_SIZE,DYE_SIZE);
+    const S=DYE_SIZE;
+    const paint=(cx2,cy2,bR,col,core)=>{ctx.fillStyle=col;ctx.beginPath();const pts=Math.floor(Math.random()*12)+8;for(let j=0;j<pts;j++){const a=(j/pts)*Math.PI*2,r=bR*(0.3+Math.random()*0.9);j===0?ctx.moveTo(cx2+Math.cos(a)*r,cy2+Math.sin(a)*r):ctx.lineTo(cx2+Math.cos(a)*r,cy2+Math.sin(a)*r);}ctx.closePath();ctx.fill();const sN=Math.floor(Math.random()*10*spM)+5;for(let k=0;k<sN;k++){const a=Math.random()*Math.PI*2,reach=bR*(1.5+Math.random()*3)*spM,sz=bR*(0.05+Math.random()*0.15);ctx.beginPath();ctx.moveTo(cx2+Math.cos(a)*bR*0.3,cy2+Math.sin(a)*bR*0.3);ctx.quadraticCurveTo(cx2+Math.cos(a+0.3)*reach*0.5,cy2+Math.sin(a+0.3)*reach*0.5,cx2+Math.cos(a)*reach,cy2+Math.sin(a)*reach);ctx.lineWidth=sz;ctx.lineCap='round';ctx.strokeStyle=col;ctx.stroke();for(let d=0;d<Math.floor(Math.random()*4)+1;d++){const dd=reach*(0.9+Math.random()*0.5),da=a+(Math.random()-0.5)*0.2,dR=sz*(Math.random()*1.5+0.5);ctx.beginPath();ctx.arc(cx2+Math.cos(da)*dd,cy2+Math.sin(da)*dd,dR,0,Math.PI*2);ctx.fill();}}if(core){for(let m=0;m<Math.floor((Math.random()*40+20)*aM);m++){const ma=Math.random()*Math.PI*2,md=bR*(0.8+Math.random()*2.5);ctx.beginPath();ctx.arc(cx2+Math.cos(ma)*md,cy2+Math.sin(ma)*md,(Math.random()*2+0.5)*uiScale,0,Math.PI*2);ctx.fill();}}};
+    // 带水平循环的泼墨绘制：在原位画一次，靠近边缘的在对侧也画一次
+    const paintWrap=(cx2,cy2,bR,col,core)=>{
+        paint(cx2,cy2,bR,col,core);
+        const reach=bR*4.5*spM;
+        if(cx2<reach) paint(cx2+S,cy2,bR,col,core);
+        if(cx2>S-reach) paint(cx2-S,cy2,bR,col,core);
+    };
+    ctx.globalCompositeOperation='multiply';for(let i=0;i<Math.floor(12*aM);i++){paintWrap(Math.random()*S,Math.random()*S,(Math.random()*120+60)*uiScale,hexToRgba(i%2===0?c2:c3,Math.random()*0.25+0.1),false);}
+    ctx.globalCompositeOperation='source-over';for(let i=0;i<Math.floor(15*aM);i++){paintWrap(Math.random()*S,Math.random()*S,(Math.random()*50+15)*uiScale,hexToRgba(i%2===0?c2:c3,Math.random()*0.5+0.4),true);}
+    // 拖尾流线也做水平循环
+    for(let i=0;i<Math.floor(8*drM);i++){const sx=Math.random()*S,sy=Math.random()*S,len=(Math.random()*400+150)*uiScale*drM,thk=(Math.random()*6+2)*uiScale;
+        const drawDrip=(ox)=>{ctx.beginPath();ctx.moveTo(sx+ox,sy);let cx2=sx+ox,cy2=sy;for(let st=0;st<8;st++){cx2+=(Math.random()-0.5)*30*uiScale;cy2+=len/8;ctx.lineTo(cx2,cy2);}ctx.strokeStyle=hexToRgba(i%2===0?c2:c3,Math.random()*0.6+0.2);ctx.lineWidth=thk;ctx.lineCap=ctx.lineJoin='round';ctx.stroke();ctx.fillStyle=hexToRgba(i%2===0?c2:c3,Math.random()*0.7+0.3);ctx.beginPath();ctx.arc(cx2,cy2,thk*1.2,0,Math.PI*2);ctx.fill();};
+        drawDrip(0);
+        if(sx<len*0.3) drawDrip(S);
+        if(sx>S-len*0.3) drawDrip(-S);
+    }
+}
+
+function drawAura(ctx,c1,c2,c3,uiScale, inten,bCnt,spM,edS) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data;
+    const rng=makeRng(globalSeed),blobs=[];
+    for(let i=0;i<bCnt;i++){blobs.push({x:rng()*w,y:rng()*h,r:(rng()*200+150)*uiScale*spM,color:i%2===0?rgb2:rgb3,str:rng()*0.5+0.5});}
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){const idx=(y*w+x)*4;let tW=0,aR=0,aG=0,aB=0;
+        for(const bl of blobs){
+            // 水平循环距离
+            let dx=x-bl.x; if(dx>w/2)dx-=w; else if(dx<-w/2)dx+=w;
+            const dy=y-bl.y,dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist>bl.r*1.5)continue;
+            const ang=Math.atan2(dy,dx);
+            // 用循环噪声做边缘扰动
+            const nx=x/w;
+            const eW=1+tileFbm(nx,dist*0.01,2,3,3)*0.4;
+            const eD=dist*eW;
+            let wv=Math.max(0,1-eD/bl.r);wv=Math.pow(wv,1.5)*bl.str*inten;
+            if(edS>0){const eR=Math.abs(eD/bl.r-0.7);if(eR<0.15)wv+=(0.15-eR)/0.15*edS*0.4;}
+            tW+=wv;aR+=bl.color.r*wv;aG+=bl.color.g*wv;aB+=bl.color.b*wv;
+        }
+        let r,g,b;if(tW>0.001){const al=clamp01(tW);r=lerp(al,rgb1.r,aR/tW);g=lerp(al,rgb1.g,aG/tW);b=lerp(al,rgb1.b,aB/tW);}else{r=rgb1.r;g=rgb1.g;b=rgb1.b;}
+        const nx=x/w,ny=y/h;
+        const gr=(Math.random()-0.5)*15,tx=tileFbm(nx,ny,6,6,2)*8;
+        data[idx]=clamp255(r+gr+tx);data[idx+1]=clamp255(g+gr+tx);data[idx+2]=clamp255(b+gr+tx);data[idx+3]=255;
+    }}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+// --- Shibori 风暴 (原版 · 保留经典效果) ---
+function drawShiboriStorm(ctx,c1,c2,c3,uiScale,density,softness,borderH,alignment) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data,freq=density*0.10;
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){const idx=(y*w+x)*4,nx=x/w,ny=y/h;const dL=ny*0.18;
+    const dX=fbm(nx*2.5+alignment*7.3,ny*3.8,4)*0.13;
+    const dY=fbm(nx*3.1+1.7,ny*2.2+alignment*5.9,3)*0.07;
+    const wx=(nx+dL+dX+alignment)%1,wy=ny+dY;
+    const p1=(wx*freq*w)%1,d1=Math.abs(p1-0.5)*2,p2=((wx*freq*w*1.42)+0.38)%1,d2=Math.abs(p2-0.5)*2;const comb=d1*0.68+d2*0.32;const vDye=Math.pow(comb,1/softness);
+    const nV=(fbm(wx*freq*w*1.6,wy*5,3)-0.5)*0.14;const fV=clamp01(vDye+nV);
+    const hp1=(wy*freq*h*1.25)%1,hd1=Math.abs(hp1-0.5)*2,hp2=((wy*freq*h*0.72)+0.28)%1,hd2=Math.abs(hp2-0.5)*2;const hC=hd1*0.62+hd2*0.38;const hDye=Math.pow(hC,1/softness);
+    const hN=(fbm(wx*3.2,wy*freq*h*0.9,3)-0.5)*0.10;const fH=clamp01(hDye+hN);
+    const tS=1-borderH,rT=ny>tS?(ny-tS)/borderH:0,tF=Math.pow(Math.min(1,rT),0.65);
+    const vR=lerp(fV,rgb1.r,rgb2.r),vG=lerp(fV,rgb1.g,rgb2.g),vB=lerp(fV,rgb1.b,rgb2.b);const hR=lerp(fH,rgb3.r,rgb2.r),hG=lerp(fH,rgb3.g,rgb2.g),hB=lerp(fH,rgb3.b,rgb2.b);
+    const r=lerp(tF,vR,hR),g=lerp(tF,vG,hG),b=lerp(tF,vB,hB);const gr=(Math.random()-0.5)*13;data[idx]=clamp255(r+gr);data[idx+1]=clamp255(g+gr);data[idx+2]=clamp255(b+gr);data[idx+3]=255;}}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+// --- Shibori 潮汐 (无缝循环版 · tileFbm) ---
+function drawShiboriTide(ctx,c1,c2,c3,uiScale,density,softness,borderH,alignment) {
+    const rgb1=hexToRgb(c1),rgb2=hexToRgb(c2),rgb3=hexToRgb(c3);const w=PROC_SIZE,h=PROC_SIZE,data=procImgData.data,freq=density*0.10;
+    for(let y=0;y<h;y++){for(let x=0;x<w;x++){const idx=(y*w+x)*4,nx=x/w,ny=y/h;const dL=ny*0.18;
+    const dX=tileFbm(nx,ny,2.5+alignment*7.3,3.8,4)*0.13;
+    const dY=tileFbm(nx,ny,3.1+1.7,2.2+alignment*5.9,3)*0.07;
+    const wx=(nx+dL+dX+alignment)%1,wy=ny+dY;
+    const p1=(wx*freq*w)%1,d1=Math.abs(p1-0.5)*2,p2=((wx*freq*w*1.42)+0.38)%1,d2=Math.abs(p2-0.5)*2;const comb=d1*0.68+d2*0.32;const vDye=Math.pow(comb,1/softness);
+    const nV=(tileFbm(wx,wy,freq*w*1.6,5,3)-0.5)*0.14;const fV=clamp01(vDye+nV);
+    const hp1=(wy*freq*h*1.25)%1,hd1=Math.abs(hp1-0.5)*2,hp2=((wy*freq*h*0.72)+0.28)%1,hd2=Math.abs(hp2-0.5)*2;const hC=hd1*0.62+hd2*0.38;const hDye=Math.pow(hC,1/softness);
+    const hN=(tileFbm(wx,wy,3.2,freq*h*0.9,3)-0.5)*0.10;const fH=clamp01(hDye+hN);
+    const tS=1-borderH,rT=ny>tS?(ny-tS)/borderH:0,tF=Math.pow(Math.min(1,rT),0.65);
+    const vR=lerp(fV,rgb1.r,rgb2.r),vG=lerp(fV,rgb1.g,rgb2.g),vB=lerp(fV,rgb1.b,rgb2.b);const hR=lerp(fH,rgb3.r,rgb2.r),hG=lerp(fH,rgb3.g,rgb2.g),hB=lerp(fH,rgb3.b,rgb2.b);
+    const r=lerp(tF,vR,hR),g=lerp(tF,vG,hG),b=lerp(tF,vB,hB);const gr=(Math.random()-0.5)*13;data[idx]=clamp255(r+gr);data[idx+1]=clamp255(g+gr);data[idx+2]=clamp255(b+gr);data[idx+3]=255;}}
+    procCtx.putImageData(procImgData,0,0);procToCtx(ctx);
+}
+
+// =====================================================
+// 6. 面料材质
+// =====================================================
+const FABRIC_CONFIGS={cotton:{roughness:0.9,metalness:0,bumpScale:0.005,clearcoat:0,clearcoatRoughness:0,sheen:0x333333},silk:{roughness:0.3,metalness:0.2,bumpScale:0.001,clearcoat:0,clearcoatRoughness:0,sheen:0xffffff},velvet:{roughness:0.7,metalness:0.1,bumpScale:0.005,clearcoat:0,clearcoatRoughness:0,sheen:0xffffff},nylon:{roughness:0.45,metalness:0.1,bumpScale:0.015,clearcoat:0.3,clearcoatRoughness:0.4,sheen:0x111111},denim:{roughness:0.95,metalness:0,bumpScale:0.01,clearcoat:0,clearcoatRoughness:0,sheen:0}};
+const fabricMaterial=new THREE.MeshPhysicalMaterial({map:dyeTexture,bumpMap:bumpMaps['cotton'],bumpScale:0.005,side:THREE.DoubleSide,roughness:0.9,metalness:0,clearcoat:0,clearcoatRoughness:0,sheen:new THREE.Color(0x333333)});
+function updateFabricType(){const c=FABRIC_CONFIGS[DOM.fabricType.value]||FABRIC_CONFIGS.cotton;fabricMaterial.bumpMap=bumpMaps[DOM.fabricType.value];fabricMaterial.roughness=c.roughness;fabricMaterial.metalness=c.metalness;fabricMaterial.bumpScale=c.bumpScale;fabricMaterial.clearcoat=c.clearcoat;fabricMaterial.clearcoatRoughness=c.clearcoatRoughness;fabricMaterial.sheen=new THREE.Color(c.sheen);fabricMaterial.needsUpdate=true;}
+
+// =====================================================
+// 7. 程序化连衣裙 (无合模线)
+// =====================================================
+function createProceduralDress(){const seg=128,rings=64,H=7.5,topR=0.7,botR=3.5;const total=(seg+1)*(rings+1);const pos=new Float32Array(total*3),uvs=new Float32Array(total*2);
+for(let iy=0;iy<=rings;iy++){const v=iy/rings,y=v*H-H/2,ny=v;const bR=lerp(v,botR,topR),wF=1-Math.exp(-Math.pow((ny-0.65)*4.5,2))*0.45;for(let ix=0;ix<=seg;ix++){const u=ix/seg,th=u*Math.PI*2;const rAmp=(1-ny)*0.35,rip=Math.sin(th*12)*rAmp,r=bR*wF+rip;const i=iy*(seg+1)+ix;pos[i*3]=Math.cos(th)*r;pos[i*3+1]=y;pos[i*3+2]=Math.sin(th)*r;uvs[i*2]=u;uvs[i*2+1]=v;}}
+const idx=[];for(let iy=0;iy<rings;iy++){for(let ix=0;ix<seg;ix++){const a=iy*(seg+1)+ix,b=a+1,c=(iy+1)*(seg+1)+ix+1,d=(iy+1)*(seg+1)+ix;idx.push(a,b,d,b,c,d);}}
+const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idx);geo.computeVertexNormals();return geo;}
+const baseMesh=new THREE.Mesh(createProceduralDress(),fabricMaterial);baseMesh.castShadow=baseMesh.receiveShadow=false;
+currentModel=new THREE.Group();currentModel.add(baseMesh);scene.add(currentModel);
+
+// =====================================================
+// 8. 预设方案库
+// =====================================================
+const PRESETS = [
+    { name:'靛蓝 Shibori',  sub:'天然靛蓝扎染', fabric:'cotton', pattern:'shibori', c1:'#f0ead6', c2:'#1a3a5c', c3:'#0a1a2e', scale:1.0, params:{shiboriDensity:1.2,shiboriSoftness:1.4,shiboriBorder:0.25,shiboriAlign:0}, overlay:null },
+    { name:'抹茶矿染',      sub:'绿茶矿物晕染', fabric:'silk', pattern:'mineral', c1:'#f5f0e8', c2:'#5a7a3a', c3:'#2a3a1a', scale:1.2, params:{minDir:15,minDistort:1.5,minEdge:0.20}, overlay:null },
+    { name:'赤陶冰晶',      sub:'冰染结晶效果', fabric:'cotton', pattern:'radial', c1:'#f8efe0', c2:'#b85c3a', c3:'#5a2a1a', scale:1.0, params:{radDensity:1.2,radSpike:1.5,radBleed:1.2}, overlay:null },
+    { name:'水墨大理石',    sub:'东方水拓纹理', fabric:'silk', pattern:'marble', c1:'#faf8f5', c2:'#2a2a2a', c3:'#5a5a5a', scale:1.0, params:{mrbVeins:1.5,mrbWave:1.2,mrbWidth:0.8,mrbSwirl:0.5}, overlay:null },
+    { name:'侘寂灰调',      sub:'素色亚麻灰', fabric:'cotton', pattern:'solid', c1:'#c8bfb0', c2:'#c8bfb0', c3:'#c8bfb0', scale:1.0, params:{}, overlay:null },
+    { name:'赛博泼墨',      sub:'荧光泼墨风', fabric:'nylon', pattern:'splatter', c1:'#1a1a2e', c2:'#ff3a6a', c3:'#00e0ff', scale:1.0, params:{splAmount:1.5,splSplash:2.0,splDrip:1.5}, overlay:null },
+    { name:'落日吊染',      sub:'暖色渐变浸染', fabric:'cotton', pattern:'gradient', c1:'#fff5e6', c2:'#e8833a', c3:'#8a2a3a', scale:1.0, params:{gradAngle:0,gradRipple:0.4,gradSharp:0.6}, overlay:null },
+    { name:'双层·靛蓝泼墨', sub:'Shibori + 泼墨叠染', fabric:'cotton', pattern:'shibori', c1:'#f0ead6', c2:'#1a3a5c', c3:'#0a1a2e', scale:1.0, params:{shiboriDensity:1.0,shiboriSoftness:1.2,shiboriBorder:0.20,shiboriAlign:0}, overlay:{ pattern:'splatter', blend:'multiply', opacity:0.45, scale:1.0, c1:'#0a0a2a', c2:'#2a1a0a' } },
+    { name:'双层·矿染水彩', sub:'矿物底 + 水彩叠', fabric:'silk', pattern:'mineral', c1:'#f5f0e8', c2:'#6a5a4a', c3:'#3a2a1a', scale:1.0, params:{minDir:0,minDistort:1.0,minEdge:0.15}, overlay:{ pattern:'aura', blend:'overlay', opacity:0.50, scale:1.0, c1:'#8a3a5a', c2:'#3a5a8a' } },
+    { name:'双层·酸洗冰晶', sub:'酸洗底 + 冰染叠', fabric:'denim', pattern:'acidwash', c1:'#2a3a5a', c2:'#8a9ab0', c3:'#8a9ab0', scale:1.0, params:{acidBleach:0.7,acidPatch:1.2,acidFiber:0.3}, overlay:{ pattern:'radial', blend:'screen', opacity:0.35, scale:0.8, c1:'#c0d0ff', c2:'#e0e8ff' } },
+];
+
+function renderPresetShelf() {
+    const shelf = document.getElementById('preset-shelf');
+    shelf.innerHTML = '';
+    PRESETS.forEach((p, i) => {
+        const card = document.createElement('div');
+        card.className = 'preset-card';
+        card.innerHTML = `
+            <div class="preset-colors">
+                <div style="background:${p.c1}"></div>
+                <div style="background:${p.c2}"></div>
+                <div style="background:${p.c3}"></div>
+            </div>
+            <div class="preset-label">${p.name}<small>${p.sub}</small></div>
+        `;
+        card.addEventListener('click', () => applyPreset(i));
+        shelf.appendChild(card);
+    });
+}
+
+function applyPreset(index) {
+    const p = PRESETS[index];
+    // 基础参数
+    DOM.fabricType.value = p.fabric;
+    DOM.dyePattern.value = p.pattern;
+    DOM.color1.value = p.c1;
+    DOM.color2.value = p.c2;
+    DOM.color3.value = p.c3;
+    DOM.dyeScale.value = p.scale;
+    DOM.valScale.innerText = p.scale.toFixed(1);
+    // 三色
+    DOM.color3Container.style.display = 'block';
+    DOM.toggleColorBtn.innerText = '➖ 辅色2';
+
+    // 工艺专属参数
+    Object.entries(p.params).forEach(([key, val]) => {
+        const el = DOM[key] || document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase());
+        if (el) { el.value = val; /* 更新对应标签 */ const ev=new Event('input',{bubbles:true}); el.dispatchEvent(ev); }
+    });
+
+    // 叠染层
+    if (p.overlay) {
+        DOM.overlayEnabled.checked = true;
+        DOM.overlayPanel.style.opacity = '1';
+        DOM.overlayPanel.style.pointerEvents = 'auto';
+        DOM.overlayPattern.value = p.overlay.pattern;
+        DOM.overlayBlend.value = p.overlay.blend;
+        DOM.overlayOpacity.value = p.overlay.opacity;
+        DOM.overlayScale.value = p.overlay.scale;
+        DOM.overlayC1.value = p.overlay.c1;
+        DOM.overlayC2.value = p.overlay.c2;
+        document.getElementById('val-overlay-opacity').innerText = p.overlay.opacity.toFixed(2);
+        document.getElementById('val-overlay-scale').innerText = p.overlay.scale.toFixed(1);
+        // 透明复选框复位
+        document.getElementById('overlay-c1-transparent').checked = false;
+        DOM.overlayC1.disabled = false;
+        DOM.overlayC1.style.opacity = '1';
+        // 叠染工艺专属参数 (ov- prefix)
+        if (p.overlay.params) {
+            Object.entries(p.overlay.params).forEach(([key, val]) => {
+                const elId = 'ov-' + key.replace(/([A-Z])/g, '-$1').toLowerCase();
+                const el = document.getElementById(elId);
+                if (el) { el.value = val; el.dispatchEvent(new Event('input',{bubbles:true})); }
+            });
+        }
+        // 显示叠染层工艺控件
+        Object.values(ovTechniqueMap).forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('active'); });
+        const ovCtrlId = ovTechniqueMap[p.overlay.pattern];
+        if(ovCtrlId) document.getElementById(ovCtrlId)?.classList.add('active');
+    } else {
+        DOM.overlayEnabled.checked = false;
+        DOM.overlayPanel.style.opacity = '0.4';
+        DOM.overlayPanel.style.pointerEvents = 'none';
+        DOM.overlayPattern.value = 'none';
+        Object.values(ovTechniqueMap).forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('active'); });
+    }
+
+    // 更新工艺控件显隐
+    document.querySelectorAll('.technique-controls').forEach(el => el.classList.remove('active'));
+    const ctrlId = techniqueMap[p.pattern];
+    if (ctrlId) document.getElementById(ctrlId)?.classList.add('active');
+
+    // 高亮选中的预设卡
+    document.querySelectorAll('.preset-card').forEach((c,i) => c.classList.toggle('active', i===index));
+
+    updateFabricType();
+    updateDye();
+}
+
+// =====================================================
+// 9. 事件绑定
+// =====================================================
+const techniqueMap = { gradient:'gradient-controls', ecoprint:'ecoprint-controls', radial:'radial-controls', mineral:'mineral-controls', acidwash:'acidwash-controls', marble:'marble-controls', splatter:'splatter-controls', aura:'aura-controls', shibori:'shibori-controls', 'shibori-tide':'shibori-controls' };
+
+DOM.dyePattern.addEventListener('change', () => {
+    document.querySelectorAll('.technique-controls').forEach(el => el.classList.remove('active'));
+    const id = techniqueMap[DOM.dyePattern.value];
+    if(id) document.getElementById(id)?.classList.add('active');
+    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    updateDye();
+});
+
+DOM.color1.addEventListener('input', updateDye);
+DOM.color2.addEventListener('input', updateDye);
+DOM.color3.addEventListener('input', updateDye);
+DOM.fabricType.addEventListener('change', () => { updateFabricType(); });
+DOM.dyeScale.addEventListener('input', e => { DOM.valScale.innerText=parseFloat(e.target.value).toFixed(1); });
+DOM.dyeScale.addEventListener('change', updateDye);
+DOM.refreshBtn.addEventListener('click', () => { ecoprintSeed=Math.random()*10000; globalSeed=Math.random()*10000; updateDye(); });
+
+function bindParam(el, labelEl, dec) { if(!el||!labelEl) return; el.addEventListener('input',()=>{labelEl.innerText=parseFloat(el.value).toFixed(dec);}); el.addEventListener('change', updateDye); }
+bindParam(DOM.shiboriDensity,DOM.valDensity,1); bindParam(DOM.shiboriSoftness,DOM.valSoftness,1);
+bindParam(DOM.shiboriBorder,DOM.valBorder,2); bindParam(DOM.shiboriAlign,DOM.valAlignment,2);
+bindParam(DOM.gradAngle,document.getElementById('val-grad-angle'),0);
+bindParam(DOM.gradRipple,document.getElementById('val-grad-ripple'),2);
+bindParam(DOM.gradSharp,document.getElementById('val-grad-sharp'),2);
+bindParam(DOM.ecoCount,document.getElementById('val-eco-count'),0);
+bindParam(DOM.ecoStain,document.getElementById('val-eco-stain'),2);
+bindParam(DOM.ecoPressure,document.getElementById('val-eco-pressure'),2);
+bindParam(DOM.radDensity,document.getElementById('val-rad-density'),1);
+bindParam(DOM.radSpike,document.getElementById('val-rad-spike'),1);
+bindParam(DOM.radBleed,document.getElementById('val-rad-bleed'),1);
+bindParam(DOM.minDir,document.getElementById('val-min-dir'),0);
+bindParam(DOM.minDistort,document.getElementById('val-min-distort'),1);
+bindParam(DOM.minEdge,document.getElementById('val-min-edge'),2);
+bindParam(DOM.acidBleach,document.getElementById('val-acid-bleach'),2);
+bindParam(DOM.acidPatch,document.getElementById('val-acid-patch'),1);
+bindParam(DOM.acidFiber,document.getElementById('val-acid-fiber'),2);
+bindParam(DOM.mrbVeins,document.getElementById('val-mrb-veins'),1);
+bindParam(DOM.mrbWave,document.getElementById('val-mrb-wave'),1);
+bindParam(DOM.mrbWidth,document.getElementById('val-mrb-width'),1);
+bindParam(DOM.mrbSwirl,document.getElementById('val-mrb-swirl'),1);
+bindParam(DOM.splAmount,document.getElementById('val-spl-amount'),1);
+bindParam(DOM.splSplash,document.getElementById('val-spl-splash'),1);
+bindParam(DOM.splDrip,document.getElementById('val-spl-drip'),1);
+bindParam(DOM.auraInt,document.getElementById('val-aura-int'),2);
+bindParam(DOM.auraBlobs,document.getElementById('val-aura-blobs'),0);
+bindParam(DOM.auraSpread,document.getElementById('val-aura-spread'),1);
+bindParam(DOM.auraEdge,document.getElementById('val-aura-edge'),2);
+
+DOM.toggleColorBtn.addEventListener('click', () => {
+    const h=DOM.color3Container.style.display==='none';
+    DOM.color3Container.style.display=h?'block':'none';
+    DOM.toggleColorBtn.innerText=h?'➖ 辅色2':'➕ 辅色2';
+    updateDye();
+});
+
+let isAutoRotate=false;
+DOM.autoRotate.addEventListener('change',e=>{isAutoRotate=e.target.checked;});
+
+// 叠染层控制
+const ovTechniqueMap = { gradient:'ov-gradient-controls', ecoprint:'ov-ecoprint-controls', radial:'ov-radial-controls', mineral:'ov-mineral-controls', acidwash:'ov-acidwash-controls', marble:'ov-marble-controls', splatter:'ov-splatter-controls', aura:'ov-aura-controls', shibori:'ov-shibori-controls', 'shibori-tide':'ov-shibori-controls' };
+
+DOM.overlayEnabled.addEventListener('change', () => {
+    const on = DOM.overlayEnabled.checked;
+    DOM.overlayPanel.style.opacity = on ? '1' : '0.4';
+    DOM.overlayPanel.style.pointerEvents = on ? 'auto' : 'none';
+    updateDye();
+});
+DOM.overlayPattern.addEventListener('change', () => {
+    // 显隐叠染层工艺控件
+    Object.values(ovTechniqueMap).forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('active'); });
+    const ctrlId = ovTechniqueMap[DOM.overlayPattern.value];
+    if(ctrlId) document.getElementById(ctrlId)?.classList.add('active');
+    updateDye();
+});
+DOM.overlayBlend.addEventListener('change', updateDye);
+bindParam(DOM.overlayOpacity, document.getElementById('val-overlay-opacity'), 2);
+bindParam(DOM.overlayScale, document.getElementById('val-overlay-scale'), 1);
+DOM.overlayC1.addEventListener('input', updateDye);
+DOM.overlayC2.addEventListener('input', updateDye);
+document.getElementById('overlay-c1-transparent').addEventListener('change', (e) => {
+    if (e.target.checked) {
+        DOM.overlayC1.value = '#ffffff';
+        DOM.overlayC1.disabled = true;
+        DOM.overlayC1.style.opacity = '0.35';
+    } else {
+        DOM.overlayC1.disabled = false;
+        DOM.overlayC1.style.opacity = '1';
+    }
+    updateDye();
+});
+
+// 叠染层全部工艺参数绑定
+bindParam(document.getElementById('ov-grad-angle'), document.getElementById('ov-val-grad-angle'), 0);
+bindParam(document.getElementById('ov-grad-ripple'), document.getElementById('ov-val-grad-ripple'), 2);
+bindParam(document.getElementById('ov-grad-sharp'), document.getElementById('ov-val-grad-sharp'), 2);
+bindParam(document.getElementById('ov-eco-count'), document.getElementById('ov-val-eco-count'), 0);
+bindParam(document.getElementById('ov-eco-stain'), document.getElementById('ov-val-eco-stain'), 2);
+bindParam(document.getElementById('ov-eco-pressure'), document.getElementById('ov-val-eco-pressure'), 2);
+bindParam(document.getElementById('ov-rad-density'), document.getElementById('ov-val-rad-density'), 1);
+bindParam(document.getElementById('ov-rad-spike'), document.getElementById('ov-val-rad-spike'), 1);
+bindParam(document.getElementById('ov-rad-bleed'), document.getElementById('ov-val-rad-bleed'), 1);
+bindParam(document.getElementById('ov-min-dir'), document.getElementById('ov-val-min-dir'), 0);
+bindParam(document.getElementById('ov-min-distort'), document.getElementById('ov-val-min-distort'), 1);
+bindParam(document.getElementById('ov-min-edge'), document.getElementById('ov-val-min-edge'), 2);
+bindParam(document.getElementById('ov-acid-bleach'), document.getElementById('ov-val-acid-bleach'), 2);
+bindParam(document.getElementById('ov-acid-patch'), document.getElementById('ov-val-acid-patch'), 1);
+bindParam(document.getElementById('ov-acid-fiber'), document.getElementById('ov-val-acid-fiber'), 2);
+bindParam(document.getElementById('ov-mrb-veins'), document.getElementById('ov-val-mrb-veins'), 1);
+bindParam(document.getElementById('ov-mrb-wave'), document.getElementById('ov-val-mrb-wave'), 1);
+bindParam(document.getElementById('ov-mrb-width'), document.getElementById('ov-val-mrb-width'), 1);
+bindParam(document.getElementById('ov-mrb-swirl'), document.getElementById('ov-val-mrb-swirl'), 1);
+bindParam(document.getElementById('ov-spl-amount'), document.getElementById('ov-val-spl-amount'), 1);
+bindParam(document.getElementById('ov-spl-splash'), document.getElementById('ov-val-spl-splash'), 1);
+bindParam(document.getElementById('ov-spl-drip'), document.getElementById('ov-val-spl-drip'), 1);
+bindParam(document.getElementById('ov-aura-int'), document.getElementById('ov-val-aura-int'), 2);
+bindParam(document.getElementById('ov-aura-blobs'), document.getElementById('ov-val-aura-blobs'), 0);
+bindParam(document.getElementById('ov-aura-spread'), document.getElementById('ov-val-aura-spread'), 1);
+bindParam(document.getElementById('ov-aura-edge'), document.getElementById('ov-val-aura-edge'), 2);
+bindParam(document.getElementById('ov-shibori-density'), document.getElementById('ov-val-density'), 1);
+bindParam(document.getElementById('ov-shibori-softness'), document.getElementById('ov-val-softness'), 1);
+bindParam(document.getElementById('ov-shibori-border'), document.getElementById('ov-val-border'), 2);
+bindParam(document.getElementById('ov-shibori-alignment'), document.getElementById('ov-val-alignment'), 2);
+
+// 模型上传
+function applyMaterialAndCenter(object,initialOffsetX=0){if(currentModel){scene.remove(currentModel);currentModel.traverse(c=>{if(c.isMesh)c.geometry.dispose();});}object.position.set(0,0,0);object.scale.set(1,1,1);object.rotation.set(0,0,0);object.updateMatrixWorld(true);const rawBox=new THREE.Box3().setFromObject(object);const rawSize=new THREE.Vector3(),rawCenter=new THREE.Vector3();rawBox.getSize(rawSize);rawBox.getCenter(rawCenter);object.traverse(child=>{if(!child.isMesh)return;if(child.geometry.index)child.geometry=child.geometry.toNonIndexed();const pos=child.geometry.attributes.position;const vertex=new THREE.Vector3();const uvs=[];for(let i=0;i<pos.count;i++){vertex.fromBufferAttribute(pos,i);child.localToWorld(vertex);const v=rawSize.y>0?(vertex.y-rawBox.min.y)/rawSize.y:0.5;const angle=Math.atan2(vertex.z-rawCenter.z,vertex.x-rawCenter.x);uvs.push((angle+Math.PI)/(2*Math.PI),v);}for(let i=0;i<pos.count;i+=3){const u0=uvs[i*2],u1=uvs[(i+1)*2],u2=uvs[(i+2)*2];if(Math.max(u0,u1,u2)-Math.min(u0,u1,u2)>0.5){if(u0<0.5)uvs[i*2]+=1;if(u1<0.5)uvs[(i+1)*2]+=1;if(u2<0.5)uvs[(i+2)*2]+=1;}}child.geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));child.material=fabricMaterial;child.castShadow=child.receiveShadow=false;});const maxDim=Math.max(rawSize.x,rawSize.y,rawSize.z);object.scale.setScalar(7.5/maxDim);object.updateMatrixWorld(true);const sb=new THREE.Box3().setFromObject(object);const sc=new THREE.Vector3();sb.getCenter(sc);object.position.set(-sc.x,-sc.y,-sc.z);currentModel=new THREE.Group();currentModel.position.x=initialOffsetX;currentModel.add(object);scene.add(currentModel);controls.target.set(initialOffsetX,0,0);camera.position.set(initialOffsetX,0,13);updateDye();}
+DOM.modelUpload.addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const url=URL.createObjectURL(file);const ext=file.name.split('.').pop().toLowerCase();if(ext==='glb'||ext==='gltf'){new THREE.GLTFLoader().load(url,g=>applyMaterialAndCenter(g.scene));}else if(ext==='obj'){new THREE.OBJLoader().load(url,applyMaterialAndCenter);}});
+new THREE.GLTFLoader().load(PRELOADED_MODEL_URL,g=>applyMaterialAndCenter(g.scene,2.25),undefined,error=>console.warn('Preloaded model could not be loaded:',error));
+
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+// =====================================================
+// 10. 导出 + Prompt 模板
+// =====================================================
+const techniqueNames={solid:'素色单染 Solid',gradient:'手工吊染 Dip Dye',ecoprint:'植物拓印 Eco-Print',radial:'冰染结晶 Ice Crystal',mineral:'矿物晕染 Mineral Bleed',acidwash:'雪花酸洗 Acid Wash',marble:'水拓大理石纹 Marble',splatter:'泼墨喷涂 Splatter',aura:'水彩晕染 Watercolor',shibori:'Shibori 风暴 Storm','shibori-tide':'Shibori 潮汐 Tide'};
+const fabricNames={cotton:'纯棉 Cotton',silk:'真丝 Silk',velvet:'丝绒 Velvet',nylon:'尼龙 Nylon',denim:'丹宁 Denim'};
+
+// Prompt 模板：根据工艺自动生成
+const PROMPT_TEMPLATES = {
+    solid: '在[${fabric}]上进行均匀素色浸染，目标色号为[${c1}]。要求整体色调均匀无色差，面料手感保持原有特性。',
+    gradient: '在[${fabric}]上进行手工吊染（浸染渐变），从[${c1}]过渡到[${c2}]${c3tag}。染浸角度约${gradAngle}°，过渡带自然柔和，允许轻微的水痕波动增加手工感。裙身上部保持浅色，下摆浓郁。',
+    ecoprint: '在[${fabric}]上进行植物拓印（Eco-Print），使用真实叶片（如蕨类、桉树叶）蒸煮压印。底色为[${c1}]，叶片在[${c2}]和[${c3}]之间呈现自然色素转移。约${ecoCount}片叶片散布于面料上，水渍晕染自然，部分区域叶脉清晰可见。',
+    radial: '在[${fabric}]上进行冰染（Ice Dyeing），将碎冰块铺满面料，撒上[${c2}]和[${c3}]色号的活性染料粉末。冰融化过程中染料自然扩散形成放射状结晶纹路，中心浓郁边缘渐淡。保留[${c1}]底色作为留白区域。',
+    mineral: '在[${fabric}]上进行矿物晕染，使用天然矿物色素（如铁矿、铜绿）在[${c1}]底色上产生[${c2}]和[${c3}]色调的有机晕染纹理。纹理整体走向约${minDir}°，边缘渗透自然过渡，模拟矿石天然断面的层次感。',
+    acidwash: '在[${fabric}]上进行雪花酸洗（Acid/Stone Wash），基础色[${c1}]经浮石摩擦和漂白处理后，产生随机的亮斑和暗区。漂白强度适中，保留底色的丰富层次，同时纤维纹理清晰可见。',
+    marble: '在[${fabric}]上进行水拓染（大理石纹/Ebru），将[${c2}]和[${c3}]色号的染料滴在水面上，用针拉出流畅的脉络纹理，再覆盖[${c1}]底色面料印制。纹理流畅自然，脉纹线条${mrbSwirl > 0 ? "带旋涡扰动" : "平行舒展"}，整体呈现天然大理石质感。',
+    splatter: '在[${fabric}]上进行泼墨喷涂染色，底色为[${c1}]，使用[${c2}]和[${c3}]色号的染料进行自由泼洒。大面积墨团、飞溅液滴和拖尾流线共同构成动态构图。整体风格${splAmount > 2 ? "浓烈狂放" : "克制有度"}，保留底色呼吸空间。',
+    aura: '在[${fabric}]上进行水彩晕染，在[${c1}]底色上用[${c2}]和[${c3}]色号的稀释染料进行湿画法晕染。${auraBlobs}个色团自然扩散融合，边缘柔和渐隐${auraEdge > 0 ? "，局部保留水迹环纹增加质感" : ""}。整体通透轻盈，如水彩画般层次丰富。',
+    shibori: '在[${fabric}]上进行岚绞扎染（Arashi Shibori），将面料缠绕在竹竿上并紧密捆扎后浸入[${c2}]色号的染液。防染区保持[${c1}]自然布色，染色区呈现斜向条纹肌理。裙摆区域过渡至[${c3}]横向纹理。晕染边缘自然渗透，体现手工捆扎的不规则之美。',
+    'shibori-tide': '在[${fabric}]上进行岚绞扎染（Arashi Shibori · 潮汐变体），采用水平无缝循环工艺。将面料缠绕在竹竿上浸入[${c2}]色号染液，防染区保持[${c1}]布色。本版纹理经过循环处理，适合需要无缝拼接的生产场景。裙摆过渡至[${c3}]横向纹理。',
+};
+
+function generatePromptTemplate() {
+    const tech = DOM.dyePattern.value;
+    const tpl = PROMPT_TEMPLATES[tech] || '';
+    const fabric = fabricNames[DOM.fabricType.value] || DOM.fabricType.value;
+    const c1=DOM.color1.value, c2=DOM.color2.value;
+    const isThree = DOM.color3Container.style.display==='block';
+    const c3 = isThree ? DOM.color3.value : c2;
+    const c3tag = isThree ? `，再渡至[${c3}]` : '';
+
+    // 收集当前参数用于模板插值
+    const vars = {
+        fabric, c1, c2, c3, c3tag,
+        gradAngle: DOM.gradAngle?.value||0,
+        ecoCount: DOM.ecoCount?.value||12,
+        minDir: DOM.minDir?.value||0,
+        mrbSwirl: parseFloat(DOM.mrbSwirl?.value||0),
+        splAmount: parseFloat(DOM.splAmount?.value||1),
+        auraBlobs: DOM.auraBlobs?.value||5,
+        auraEdge: parseFloat(DOM.auraEdge?.value||0),
+    };
+
+    let result = tpl.replace(/\$\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? vars[k] : '');
+
+    // 叠染附加
+    if (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none') {
+        const ovName = techniqueNames[DOM.overlayPattern.value] || DOM.overlayPattern.value;
+        const blendName = DOM.overlayBlend.value;
+        const opacity = DOM.overlayOpacity.value;
+        result += `\n\n【叠染层】在底染之上，以${blendName}模式（不透明度${Math.round(opacity*100)}%）叠加一层${ovName}效果，叠染色为[${DOM.overlayC1.value}]和[${DOM.overlayC2.value}]，增加纹理层次和视觉深度。`;
+    }
+
+    return result;
+}
+
+const exportModal=document.getElementById('export-modal');
+const exportPrompt=document.getElementById('export-prompt');
+
+document.getElementById('open-export-btn').addEventListener('click',()=>{
+    const pb=document.getElementById('preview-box'); pb.innerHTML='';
+    const pc=document.createElement('canvas');pc.width=pc.height=150;pc.getContext('2d').drawImage(dyeCanvas,0,0,150,150);pb.appendChild(pc);
+    document.getElementById('export-technique').textContent=(techniqueNames[DOM.dyePattern.value]||'')+(DOM.overlayEnabled.checked&&DOM.overlayPattern.value!=='none'?' + '+techniqueNames[DOM.overlayPattern.value]:'');
+    const cols=[DOM.color1.value,DOM.color2.value];if(DOM.color3Container.style.display==='block')cols.push(DOM.color3.value);
+    document.getElementById('export-colors').innerHTML=cols.map(c=>`<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${c};vertical-align:middle;margin-right:3px;border:1px solid #e0e0e0;"></span>${c}`).join('&nbsp;');
+    document.getElementById('export-fabric').textContent=(fabricNames[DOM.fabricType.value]||'')+(DOM.overlayEnabled.checked?' · 已叠染':'');
+    // 自动填充 Prompt 模板
+    exportPrompt.value = generatePromptTemplate();
+    exportModal.classList.add('active');
+});
+
+document.getElementById('export-cancel').addEventListener('click',()=>exportModal.classList.remove('active'));
+exportModal.addEventListener('click',e=>{if(e.target===exportModal)exportModal.classList.remove('active');});
+
+function downloadBlob(b,f){const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=f;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),5000);}
+function getTS(){const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;}
+function hiResCanvas(sz){const c=document.createElement('canvas');c.width=c.height=sz;const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(dyeCanvas,0,0,sz,sz);return c;}
+
+function buildParamSummary(){const t=DOM.dyePattern.value,f=DOM.fabricType.value,c1=DOM.color1.value,c2=DOM.color2.value,is3=DOM.color3Container.style.display==='block',c3=is3?DOM.color3.value:null,sc=parseFloat(DOM.dyeScale.value);let l=[];l.push(`染色工艺: ${techniqueNames[t]||t}`);l.push(`面料: ${fabricNames[f]||f}`);l.push(`色彩: ${c1}, ${c2}${c3?', '+c3:''}`);l.push(`缩放: ${sc.toFixed(1)}`);if(DOM.overlayEnabled.checked&&DOM.overlayPattern.value!=='none'){l.push(`叠染: ${techniqueNames[DOM.overlayPattern.value]} · ${DOM.overlayBlend.value} · ${Math.round(parseFloat(DOM.overlayOpacity.value)*100)}%`);}return l.join('\n');}
+
+document.getElementById('export-uv-only').addEventListener('click',()=>{const r=parseInt(document.getElementById('export-res').value),fmt=document.getElementById('export-format').value,ts=getTS(),t=DOM.dyePattern.value,c=hiResCanvas(r),mime=fmt==='jpg'?'image/jpeg':'image/png',ext=fmt==='jpg'?'jpg':'png';c.toBlob(b=>{downloadBlob(b,`染衣坊_UV_${t}_${r}px_${ts}.${ext}`);exportModal.classList.remove('active');},mime,fmt==='jpg'?0.92:undefined);});
+
+document.getElementById('export-with-prompt').addEventListener('click',()=>{const r=parseInt(document.getElementById('export-res').value),fmt=document.getElementById('export-format').value,ts=getTS(),t=DOM.dyePattern.value,c=hiResCanvas(r),mime=fmt==='jpg'?'image/jpeg':'image/png',ext=fmt==='jpg'?'jpg':'png',bn=`染衣坊_UV_${t}_${r}px_${ts}`;
+c.toBlob(b=>{downloadBlob(b,`${bn}.${ext}`);},mime,fmt==='jpg'?0.92:undefined);
+const ps=buildParamSummary(),up=exportPrompt.value.trim();
+let pc=`════════════════════════════════════════\n  染衣坊 GARMENT DYE LAB — UV 贴图 Prompt\n════════════════════════════════════════\n\n导出时间: ${new Date().toLocaleString('zh-CN')}\n贴图: ${bn}.${ext}\n分辨率: ${r}×${r}px\n\n── 参数快照 ──\n${ps}\n\n`;
+if(up)pc+=`── 生产 Prompt ──\n${up}\n\n`;
+pc+=`── UV 说明 ──\n水平U=成衣周向360°，垂直V=下摆(0)到领口(1)。左右边缘已接缝融合。\n`;
+downloadBlob(new Blob([pc],{type:'text/plain;charset=utf-8'}),`${bn}_prompt.txt`);
+exportModal.classList.remove('active');});
+
+// =====================================================
+// 11. 初始化
+// =====================================================
+DOM.color3Container.style.display='block';
+DOM.toggleColorBtn.innerText='➖ 辅色2';
+
+renderPresetShelf();
+updateDye();
+updateFabricType();
+
+let lastFrameTime=0;
+function animate(now=0){requestAnimationFrame(animate);if(document.hidden)return;if(now-lastFrameTime<33)return;lastFrameTime=now;controls.update();if(isAutoRotate&&!isInteracting&&currentModel)currentModel.rotation.y+=0.003;renderer.render(scene,camera);}
+animate();
+
+</script>
+<style id="v5-studio-polish">
+    :root {
+        --v5-ink: #171717;
+        --v5-muted: #74706a;
+        --v5-line: rgba(23, 23, 23, 0.12);
+        --v5-paper: rgba(255, 253, 248, 0.92);
+        --v5-accent: #415a46;
+    }
+
+    body, html {
+        background:
+            linear-gradient(135deg, rgba(255,255,255,0.68), rgba(238,235,226,0.82)),
+            repeating-linear-gradient(90deg, rgba(0,0,0,0.018) 0, rgba(0,0,0,0.018) 1px, transparent 1px, transparent 28px),
+            repeating-linear-gradient(0deg, rgba(0,0,0,0.014) 0, rgba(0,0,0,0.014) 1px, transparent 1px, transparent 28px);
+        color: var(--v5-ink);
+    }
+
+    #canvas-container {
+        background: radial-gradient(circle at 42% 44%, rgba(255,255,255,0.56), rgba(210,204,190,0.36) 62%, rgba(172,167,154,0.28));
+    }
+
+    #ui-panel {
+        top: 20px;
+        right: 20px;
+        width: 360px;
+        padding: 24px 22px 18px;
+        border-radius: 10px;
+        background: var(--v5-paper);
+        border: 1px solid var(--v5-line);
+        box-shadow: 0 24px 70px rgba(42, 38, 31, 0.18), 0 2px 8px rgba(42, 38, 31, 0.08);
+    }
+
+    .title-wrapper {
+        padding-bottom: 12px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid var(--v5-line);
+    }
+
+    h1 {
+        font-size: 0.98rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--v5-ink);
+    }
+
+    p.subtitle {
+        margin: 0 0 18px;
+        color: var(--v5-muted);
+        font-size: 0.76rem;
+        line-height: 1.6;
+    }
+
+    .section {
+        border-bottom: 1px solid rgba(23, 23, 23, 0.08);
+        margin-bottom: 2px;
+    }
+
+    .section-header {
+        padding: 11px 0;
+        border-bottom: 0;
+    }
+
+    .section-title {
+        color: #292724;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+    }
+
+    .section-arrow {
+        color: #8d877c;
+        font-size: 0.7rem;
+    }
+
+    .section-body {
+        padding: 8px 0 14px;
+    }
+
+    .control-group {
+        margin-bottom: 14px;
+    }
+
+    .control-group label,
+    .layer-toggle label {
+        color: #403d38;
+        font-size: 0.76rem;
+        letter-spacing: 0.01em;
+    }
+
+    select,
+    input[type="color"],
+    .modal textarea {
+        border-radius: 7px;
+        border-color: rgba(23,23,23,0.14);
+        background: rgba(255,255,255,0.68);
+    }
+
+    input[type="range"] {
+        accent-color: var(--v5-accent);
+    }
+
+    .refresh-btn,
+    .btn-dark {
+        background: var(--v5-ink);
+    }
+
+    .btn-green,
+    .btn-export-prompt {
+        background: linear-gradient(135deg, #526d57, #25362a);
+    }
+
+    .action-btn,
+    .modal-actions button {
+        border-radius: 7px;
+        letter-spacing: 0.04em;
+    }
+
+    .preset-shelf {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .preset-card {
+        aspect-ratio: 3.4;
+        border-radius: 8px;
+        border: 1px solid rgba(23,23,23,0.12);
+    }
+
+    .preset-card:hover {
+        border-color: var(--v5-ink);
+        transform: translateY(-1px);
+    }
+
+    .preset-label {
+        padding: 22px 10px 7px;
+        font-size: 0.66rem;
+        letter-spacing: 0.08em;
+    }
+
+    .technique-header {
+        color: #756f66;
+        letter-spacing: 0.16em;
+    }
+
+    .modal {
+        border-radius: 12px;
+        border: 1px solid var(--v5-line);
+        background: #fffdf8;
+    }
+
+    .modal h2 {
+        letter-spacing: 0.12em;
+    }
+
+    .hint {
+        left: 26px;
+        bottom: 26px;
+        color: rgba(23,23,23,0.38);
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+    }
+
+    @media (max-width: 760px) {
+        #ui-panel {
+            top: 12px;
+            right: 12px;
+            left: 12px;
+            width: auto;
+            max-height: 54vh;
+            padding: 18px 16px 14px;
+        }
+
+        .modal-preview-row,
+        .modal-row,
+        .modal-actions {
+            flex-direction: column;
+        }
+
+        .modal-preview-box {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+        }
+    }
+</style>
+<script id="v5-english-ui">
+(function () {
+    'use strict';
+
+    document.documentElement.lang = 'en';
+    document.title = 'Garment Dye Lab V5';
+
+    const $ = (selector) => document.querySelector(selector);
+    const setText = (selector, text) => { const el = $(selector); if (el) el.textContent = text; };
+    const setFirstText = (selector, text) => {
+        const el = $(selector);
+        if (!el) return;
+        const node = Array.from(el.childNodes).find((child) => child.nodeType === Node.TEXT_NODE);
+        if (node) node.nodeValue = text;
+        else el.insertBefore(document.createTextNode(text), el.firstChild);
+    };
+    const setOptions = (selector, labels) => {
+        const select = $(selector);
+        if (!select) return;
+        Array.from(select.options).forEach((option) => {
+            if (labels[option.value]) option.textContent = labels[option.value];
+        });
+    };
+    const setControlLabel = (inputId, text) => {
+        const input = document.getElementById(inputId);
+        const label = input && input.closest('.control-group') && input.closest('.control-group').querySelector('label');
+        if (!label) return;
+        const span = label.querySelector('span');
+        if (!span) {
+            label.textContent = text;
+            return;
+        }
+        while (label.firstChild && label.firstChild !== span) label.removeChild(label.firstChild);
+        label.insertBefore(document.createTextNode(text + ' '), span);
+    };
+
+    const techniqueLabels = {
+        solid: 'Solid Dye',
+        gradient: 'Hand Dip Dye',
+        ecoprint: 'Botanical Eco Print',
+        radial: 'Ice Crystal Dye',
+        mineral: 'Mineral Bleed',
+        acidwash: 'Acid Wash',
+        marble: 'Water Marble',
+        splatter: 'Ink Splatter',
+        aura: 'Watercolor Aura',
+        shibori: 'Arashi Shibori Storm',
+        'shibori-tide': 'Seamless Shibori Tide',
+        none: 'None'
+    };
+    const fabricLabels = {
+        cotton: 'Cotton - matte natural hand',
+        silk: 'Silk - smooth luminous sheen',
+        velvet: 'Velvet - soft raised pile',
+        nylon: 'Nylon - crisp technical surface',
+        denim: 'Denim - dry twill texture'
+    };
+    const blendLabels = {
+        'source-over': 'Normal',
+        multiply: 'Multiply',
+        overlay: 'Overlay',
+        screen: 'Screen',
+        'soft-light': 'Soft Light',
+        darken: 'Darken',
+        'color-burn': 'Color Burn'
+    };
+
+    setText('h1', 'GARMENT DYE LAB');
+    const rotate = document.getElementById('auto-rotate');
+    if (rotate && rotate.closest('label')) rotate.closest('label').title = 'Auto rotate';
+    setText('p.subtitle', 'Textile surface studio - Fabric, base dye, overlay, export');
+    [
+        '01  PRESET LIBRARY',
+        '02  FABRIC SURFACE',
+        '03  BASE DYE LAYER',
+        '04  OVERLAY DYE LAYER',
+        '05  STUDIO ACTIONS'
+    ].forEach((text, index) => {
+        const title = document.querySelectorAll('.section-title')[index];
+        if (title) title.textContent = text;
+    });
+    document.querySelectorAll('.section-arrow').forEach((el) => { el.textContent = 'v'; });
+
+    setOptions('#fabric-type', fabricLabels);
+    setText('label[style*="align-items"] > span', 'Pattern Scale ');
+    const scaleValue = document.getElementById('val-scale');
+    const scaleLabel = document.querySelector('#dye-scale')?.closest('.control-group')?.querySelector('label > span');
+    if (scaleValue && scaleLabel && !scaleLabel.contains(scaleValue)) scaleLabel.appendChild(scaleValue);
+    const refresh = document.getElementById('refresh-pattern-btn');
+    if (refresh) refresh.title = 'Regenerate pattern';
+    setOptions('#dye-pattern', techniqueLabels);
+    setOptions('#overlay-pattern', techniqueLabels);
+    setOptions('#overlay-blend', blendLabels);
+    const blendModeLabel = document.getElementById('overlay-blend')?.closest('div')?.querySelector('label');
+    if (blendModeLabel) blendModeLabel.textContent = 'Blend Mode';
+    const opacityLabel = document.getElementById('overlay-opacity')?.closest('div')?.querySelector('label');
+    const opacityValue = document.getElementById('val-overlay-opacity');
+    if (opacityLabel && opacityValue) {
+        opacityLabel.textContent = 'Opacity ';
+        opacityLabel.appendChild(opacityValue);
+    }
+
+    setControlLabel('dye-pattern', 'Base Technique');
+    const colorBlock = document.getElementById('color1')?.closest('.control-group');
+    if (colorBlock) {
+        const label = colorBlock.querySelector('label');
+        if (label) {
+            const button = document.getElementById('toggle-color-btn');
+            label.textContent = 'Base Palette ';
+            if (button) label.appendChild(button);
+        }
+    }
+    const colorLabels = [
+        ['#color1', 'Ground'],
+        ['#color2', 'Accent 1'],
+        ['#color3', 'Accent 2'],
+        ['#overlay-c1', 'Overlay Main'],
+        ['#overlay-c2', 'Overlay Accent']
+    ];
+    colorLabels.forEach(([selector, labelText]) => {
+        const label = $(selector)?.closest('div')?.querySelector('label');
+        if (label) label.childNodes[0].nodeValue = labelText;
+    });
+    const transparentLabel = $('#overlay-c1-transparent')?.closest('label');
+    if (transparentLabel) {
+        transparentLabel.childNodes[transparentLabel.childNodes.length - 1].nodeValue = 'Transparent';
+    }
+
+    setControlLabel('grad-angle', 'Dip Angle');
+    setControlLabel('grad-ripple', 'Fluid Ripple');
+    setControlLabel('grad-sharp', 'Transition Sharpness');
+    setControlLabel('eco-count', 'Leaf Count');
+    setControlLabel('eco-stain', 'Water Stain');
+    setControlLabel('eco-pressure', 'Print Pressure');
+    setControlLabel('rad-density', 'Crystal Density');
+    setControlLabel('rad-spike', 'Ice Sharpness');
+    setControlLabel('rad-bleed', 'Bleed Fusion');
+    setControlLabel('min-dir', 'Vein Direction');
+    setControlLabel('min-distort', 'Distortion');
+    setControlLabel('min-edge', 'Edge Bleed');
+    setControlLabel('acid-bleach', 'Bleach Strength');
+    setControlLabel('acid-patch', 'Patch Scale');
+    setControlLabel('acid-fiber', 'Fiber Texture');
+    setControlLabel('mrb-veins', 'Vein Density');
+    setControlLabel('mrb-wave', 'Ink Flow');
+    setControlLabel('mrb-width', 'Line Weight');
+    setControlLabel('mrb-swirl', 'Swirl Drift');
+    setControlLabel('spl-amount', 'Ink Load');
+    setControlLabel('spl-splash', 'Splash Reach');
+    setControlLabel('spl-drip', 'Trailing Drips');
+    setControlLabel('aura-int', 'Pigment Strength');
+    setControlLabel('aura-blobs', 'Color Pools');
+    setControlLabel('aura-spread', 'Diffusion Radius');
+    setControlLabel('aura-edge', 'Watermark Edge');
+    setControlLabel('shibori-density', 'Stripe Density');
+    setControlLabel('shibori-softness', 'Dye Diffusion');
+    setControlLabel('shibori-border', 'Hem Transition');
+    setControlLabel('shibori-alignment', 'Vertical Alignment');
+
+    setText('#gradient-controls .technique-header', 'HAND DIP DYE');
+    setText('#ecoprint-controls .technique-header', 'BOTANICAL ECO PRINT');
+    setText('#radial-controls .technique-header', 'ICE CRYSTAL DYE');
+    setText('#mineral-controls .technique-header', 'MINERAL BLEED');
+    setText('#acidwash-controls .technique-header', 'ACID WASH');
+    setText('#marble-controls .technique-header', 'WATER MARBLE');
+    setText('#splatter-controls .technique-header', 'INK SPLATTER');
+    setText('#aura-controls .technique-header', 'WATERCOLOR AURA');
+    setText('#shibori-controls .technique-header', 'ARASHI SHIBORI');
+
+    setFirstText('.layer-toggle label', 'Enable Overlay');
+    setControlLabel('overlay-pattern', 'Overlay Technique');
+    setControlLabel('overlay-opacity', 'Opacity');
+    setControlLabel('overlay-scale', 'Overlay Scale');
+    setControlLabel('ov-grad-angle', 'Dip Angle');
+    setControlLabel('ov-grad-ripple', 'Fluid Ripple');
+    setControlLabel('ov-grad-sharp', 'Transition Sharpness');
+    setControlLabel('ov-eco-count', 'Leaf Count');
+    setControlLabel('ov-eco-stain', 'Water Stain');
+    setControlLabel('ov-eco-pressure', 'Print Pressure');
+    setControlLabel('ov-rad-density', 'Crystal Density');
+    setControlLabel('ov-rad-spike', 'Ice Sharpness');
+    setControlLabel('ov-rad-bleed', 'Bleed Fusion');
+    setControlLabel('ov-min-dir', 'Vein Direction');
+    setControlLabel('ov-min-distort', 'Distortion');
+    setControlLabel('ov-min-edge', 'Edge Bleed');
+    setControlLabel('ov-acid-bleach', 'Bleach Strength');
+    setControlLabel('ov-acid-patch', 'Patch Scale');
+    setControlLabel('ov-acid-fiber', 'Fiber Texture');
+    setControlLabel('ov-mrb-veins', 'Vein Density');
+    setControlLabel('ov-mrb-wave', 'Ink Flow');
+    setControlLabel('ov-mrb-width', 'Line Weight');
+    setControlLabel('ov-mrb-swirl', 'Swirl Drift');
+    setControlLabel('ov-spl-amount', 'Ink Load');
+    setControlLabel('ov-spl-splash', 'Splash Reach');
+    setControlLabel('ov-spl-drip', 'Trailing Drips');
+    setControlLabel('ov-aura-int', 'Pigment Strength');
+    setControlLabel('ov-aura-blobs', 'Color Pools');
+    setControlLabel('ov-aura-spread', 'Diffusion Radius');
+    setControlLabel('ov-aura-edge', 'Watermark Edge');
+    setControlLabel('ov-shibori-density', 'Stripe Density');
+    setControlLabel('ov-shibori-softness', 'Dye Diffusion');
+    setControlLabel('ov-shibori-border', 'Hem Transition');
+    setControlLabel('ov-shibori-alignment', 'Vertical Alignment');
+
+    setText('#ov-gradient-controls .technique-header', 'OVERLAY DIP DYE');
+    setText('#ov-ecoprint-controls .technique-header', 'OVERLAY ECO PRINT');
+    setText('#ov-radial-controls .technique-header', 'OVERLAY ICE CRYSTAL');
+    setText('#ov-mineral-controls .technique-header', 'OVERLAY MINERAL');
+    setText('#ov-acidwash-controls .technique-header', 'OVERLAY ACID WASH');
+    setText('#ov-marble-controls .technique-header', 'OVERLAY MARBLE');
+    setText('#ov-splatter-controls .technique-header', 'OVERLAY SPLATTER');
+    setText('#ov-aura-controls .technique-header', 'OVERLAY WATERCOLOR');
+    setText('#ov-shibori-controls .technique-header', 'OVERLAY SHIBORI');
+
+    const uploadButton = document.querySelector('button[onclick*="model-upload"]');
+    if (uploadButton) uploadButton.textContent = 'Upload Model .obj / .glb';
+    setText('#open-export-btn', 'Export UV Texture');
+    setText('#export-modal h2', 'EXPORT UV TEXTURE');
+    setText('.modal-sub', 'Preview the active dye texture and export it with a production-ready prompt.');
+    setText('#export-technique', '-');
+    setText('#export-colors', '-');
+    setText('#export-fabric', '-');
+    const infoLabels = document.querySelectorAll('.info-label');
+    ['Technique', 'Palette', 'Fabric / Overlay'].forEach((text, index) => {
+        if (infoLabels[index]) infoLabels[index].textContent = text;
+    });
+    setText('label.modal-label', 'Production Prompt');
+    const modalLabels = document.querySelectorAll('.modal-row .modal-label');
+    if (modalLabels[0]) modalLabels[0].textContent = 'Resolution';
+    if (modalLabels[1]) modalLabels[1].textContent = 'Format';
+    setText('#export-cancel', 'Cancel');
+    setText('#export-uv-only', 'Export Texture');
+    setText('#export-with-prompt', 'Texture + Prompt');
+    setText('.hint', 'DRAG TO ROTATE / SCROLL TO ZOOM');
+
+    const updateToggleLabel = () => {
+        const button = document.getElementById('toggle-color-btn');
+        const visible = document.getElementById('color3-container')?.style.display !== 'none';
+        if (button) button.textContent = visible ? 'Hide Accent 2' : 'Add Accent 2';
+    };
+    updateToggleLabel();
+    document.getElementById('toggle-color-btn')?.addEventListener('click', updateToggleLabel);
+    document.getElementById('preset-shelf')?.addEventListener('click', () => {
+        window.setTimeout(updateToggleLabel, 0);
+    });
+
+    try {
+        Object.assign(techniqueNames, techniqueLabels);
+        Object.assign(fabricNames, {
+            cotton: 'Cotton',
+            silk: 'Silk',
+            velvet: 'Velvet',
+            nylon: 'Nylon',
+            denim: 'Denim'
+        });
+        Object.assign(PROMPT_TEMPLATES, {
+            solid: 'Apply an even solid dye on ${fabric}. Target color: ${c1}. Keep the surface balanced, clean, and suitable for garment production.',
+            gradient: 'Create a hand dip-dye effect on ${fabric}, transitioning from ${c1} to ${c2}${c3tag}. Dye angle: ${gradAngle} degrees. Keep the transition organic with subtle water movement.',
+            ecoprint: 'Create a botanical eco-print on ${fabric}. Use ${c1} as the ground color with leaf impressions in ${c2} and ${c3}. Approximate leaf count: ${ecoCount}. Preserve natural stains and pressure marks.',
+            radial: 'Create an ice-dye crystal effect on ${fabric}. Preserve ${c1} as the ground and let ${c2} and ${c3} spread into radial crystal paths as the ice melts.',
+            mineral: 'Create a mineral bleed surface on ${fabric}. Use ${c1} as the base with mineral-toned movement in ${c2} and ${c3}. Texture direction: ${minDir} degrees, with soft organic edges.',
+            acidwash: 'Create an acid-wash treatment on ${fabric}. Use ${c1} as the base and form irregular highlighted patches while retaining visible fiber texture.',
+            marble: 'Create a water-marble surface on ${fabric}. Float ${c2} and ${c3} over a ${c1} ground, forming fluid veining and refined natural marble movement.',
+            splatter: 'Create an ink-splatter dye surface on ${fabric}. Use ${c1} as the ground with free splashes in ${c2} and ${c3}. Keep the composition energetic but production usable.',
+            aura: 'Create a watercolor aura dye on ${fabric}. Use ${c1} as the ground and diffuse ${c2} and ${c3} into ${auraBlobs} soft color pools with translucent edges.',
+            shibori: 'Create an Arashi Shibori dye on ${fabric}. Preserve ${c1} as the resist area and dye with ${c2}, transitioning toward ${c3} near the hem. Keep diagonal handmade resist marks.',
+            'shibori-tide': 'Create a seamless Arashi Shibori tide repeat on ${fabric}. Preserve ${c1} as the resist area and dye with ${c2}, blending toward ${c3}. Keep the texture suitable for continuous production.'
+        });
+    } catch (error) {
+        console.warn('V5 label map update skipped:', error);
+    }
+
+    try {
+        PRESETS.forEach((preset, index) => {
+            const next = [
+                ['Indigo Shibori', 'Natural indigo resist'],
+                ['Matcha Mineral', 'Green tea mineral bleed'],
+                ['Terracotta Ice', 'Warm crystal dispersion'],
+                ['Ink Marble', 'Fluid monochrome veining'],
+                ['Quiet Linen', 'Soft neutral solid dye'],
+                ['Neon Splatter', 'Technical high-energy splash'],
+                ['Sunset Dip', 'Warm graduated immersion'],
+                ['Layered Indigo', 'Shibori with dark splatter'],
+                ['Mineral Aura', 'Mineral ground with watercolor overlay'],
+                ['Washed Ice Denim', 'Acid wash with cool crystal overlay']
+            ][index];
+            if (next) {
+                preset.name = next[0];
+                preset.sub = next[1];
+            }
+        });
+        renderPresetShelf();
+    } catch (error) {
+        console.warn('V5 preset update skipped:', error);
+    }
+
+    try {
+        generatePromptTemplate = function () {
+            const tech = DOM.dyePattern.value;
+            const tpl = PROMPT_TEMPLATES[tech] || '';
+            const fabric = fabricNames[DOM.fabricType.value] || DOM.fabricType.value;
+            const c1 = DOM.color1.value;
+            const c2 = DOM.color2.value;
+            const isThree = DOM.color3Container.style.display === 'block';
+            const c3 = isThree ? DOM.color3.value : c2;
+            const c3tag = isThree ? `, then toward ${c3}` : '';
+            const vars = {
+                fabric, c1, c2, c3, c3tag,
+                gradAngle: DOM.gradAngle?.value || 0,
+                ecoCount: DOM.ecoCount?.value || 12,
+                minDir: DOM.minDir?.value || 0,
+                auraBlobs: DOM.auraBlobs?.value || 5
+            };
+            let result = tpl.replace(/\$\{(\w+)\}/g, (_, key) => vars[key] !== undefined ? vars[key] : '');
+            if (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none') {
+                const ovName = techniqueNames[DOM.overlayPattern.value] || DOM.overlayPattern.value;
+                const opacity = Math.round(parseFloat(DOM.overlayOpacity.value) * 100);
+                result += `\n\n[Overlay Layer] Add ${ovName} above the base dye using ${DOM.overlayBlend.value} blending at ${opacity}% opacity. Overlay colors: ${DOM.overlayC1.value} and ${DOM.overlayC2.value}.`;
+            }
+            return result;
+        };
+
+        buildParamSummary = function () {
+            const colors = [DOM.color1.value, DOM.color2.value];
+            if (DOM.color3Container.style.display === 'block') colors.push(DOM.color3.value);
+            const lines = [
+                `Technique: ${techniqueNames[DOM.dyePattern.value] || DOM.dyePattern.value}`,
+                `Fabric: ${fabricNames[DOM.fabricType.value] || DOM.fabricType.value}`,
+                `Palette: ${colors.join(', ')}`,
+                `Scale: ${parseFloat(DOM.dyeScale.value).toFixed(1)}`
+            ];
+            if (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none') {
+                lines.push(`Overlay: ${techniqueNames[DOM.overlayPattern.value]} / ${DOM.overlayBlend.value} / ${Math.round(parseFloat(DOM.overlayOpacity.value) * 100)}%`);
+            }
+            return lines.join('\n');
+        };
+    } catch (error) {
+        console.warn('V5 export functions update skipped:', error);
+    }
+
+    document.getElementById('open-export-btn')?.addEventListener('click', () => {
+        document.getElementById('export-technique').textContent =
+            (techniqueNames[DOM.dyePattern.value] || '') +
+            (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none' ? ' + ' + techniqueNames[DOM.overlayPattern.value] : '');
+        document.getElementById('export-fabric').textContent =
+            (fabricNames[DOM.fabricType.value] || '') +
+            (DOM.overlayEnabled.checked && DOM.overlayPattern.value !== 'none' ? ' / Overlay enabled' : '');
+        exportPrompt.value = generatePromptTemplate();
+    });
+
+    const exportTexture = (withPrompt) => {
+        const resolution = parseInt(document.getElementById('export-res').value, 10);
+        const format = document.getElementById('export-format').value;
+        const timestamp = getTS();
+        const technique = DOM.dyePattern.value;
+        const canvas = hiResCanvas(resolution);
+        const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+        const ext = format === 'jpg' ? 'jpg' : 'png';
+        const baseName = `GarmentDyeLabV5_UV_${technique}_${resolution}px_${timestamp}`;
+        canvas.toBlob((blob) => downloadBlob(blob, `${baseName}.${ext}`), mime, format === 'jpg' ? 0.92 : undefined);
+        if (withPrompt) {
+            const promptText = exportPrompt.value.trim();
+            let content = `GARMENT DYE LAB V5 - UV TEXTURE PROMPT\n\nExport time: ${new Date().toLocaleString('en-US')}\nTexture: ${baseName}.${ext}\nResolution: ${resolution} x ${resolution}px\n\nPARAMETER SNAPSHOT\n${buildParamSummary()}\n\n`;
+            if (promptText) content += `PRODUCTION PROMPT\n${promptText}\n\n`;
+            content += 'UV NOTES\nHorizontal U maps around the garment circumference. Vertical V maps from hem at 0 to neckline at 1. Left and right edges are prepared for seam continuity.\n';
+            downloadBlob(new Blob([content], { type: 'text/plain;charset=utf-8' }), `${baseName}_prompt.txt`);
+        }
+        exportModal.classList.remove('active');
+    };
+
+    document.getElementById('export-uv-only')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        exportTexture(false);
+    }, true);
+    document.getElementById('export-with-prompt')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        exportTexture(true);
+    }, true);
+
+    document.documentElement.classList.add('v5-ready');
+})();
+</script>
+</body>
+</html>

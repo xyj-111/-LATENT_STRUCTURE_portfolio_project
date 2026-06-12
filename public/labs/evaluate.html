@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DYE OUTPUT EVALUATION SYSTEM</title>
+    <style>
+        :root {
+            --ink: #171615;
+            --charcoal: #353230;
+            --muted: #746d66;
+            --line: #d6cec3;
+            --paper: #f5f0e8;
+            --paper-deep: #ebe3d7;
+            --panel: #fbf7ef;
+            --greige: #d9d0c1;
+            --ash-brown: #7a6657;
+            --oxidized: #8f4b43;
+            --oxidized-soft: #b98274;
+            --cream: #fffaf1;
+        }
+
+        * { box-sizing: border-box; }
+
+        html { background: var(--paper); }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            background:
+                linear-gradient(90deg, rgba(23, 22, 21, 0.026) 1px, transparent 1px),
+                linear-gradient(0deg, rgba(23, 22, 21, 0.022) 1px, transparent 1px),
+                var(--paper);
+            background-size: 48px 48px;
+            font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0;
+        }
+
+        button { font: inherit; }
+        input { font: inherit; }
+
+        .page {
+            width: min(1440px, calc(100% - 48px));
+            margin: 0 auto;
+            padding: 38px 0 54px;
+        }
+
+        .portfolio-board {
+            position: relative;
+            display: grid;
+            gap: 24px;
+            padding: 34px;
+            border: 1px solid var(--line);
+            background: rgba(251, 247, 239, 0.78);
+            box-shadow: 0 18px 46px rgba(60, 46, 34, 0.055);
+        }
+
+        .top-rule,
+        .bottom-rule {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            border-top: 1px solid var(--ink);
+            padding-top: 10px;
+            color: var(--muted);
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 24px;
+            align-items: end;
+            padding-bottom: 22px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .kicker {
+            margin: 0 0 12px;
+            color: var(--oxidized);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            max-width: 880px;
+            margin: 0;
+            font-size: clamp(2.9rem, 7vw, 7rem);
+            line-height: 0.91;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        .subtitle {
+            max-width: 610px;
+            margin: 18px 0 0;
+            color: var(--charcoal);
+            font-size: 1rem;
+            line-height: 1.55;
+        }
+
+        .export-figure-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 34px;
+            padding: 0 15px;
+            border: 1px solid var(--ink);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink);
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .export-figure-btn:hover {
+            background: var(--ink);
+            color: var(--cream);
+        }
+
+        .export-tools {
+            display: grid;
+            gap: 10px;
+            justify-items: end;
+        }
+
+        .export-mode {
+            display: inline-grid;
+            grid-template-columns: repeat(2, auto);
+            gap: 0;
+            border: 1px solid var(--line);
+            background: rgba(255, 250, 241, 0.24);
+        }
+
+        .export-mode button {
+            height: 28px;
+            padding: 0 10px;
+            border: 0;
+            border-right: 1px solid var(--line);
+            background: transparent;
+            color: var(--muted);
+            font-size: 0.62rem;
+            font-weight: 850;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .export-mode button:last-child {
+            border-right: 0;
+        }
+
+        .export-mode button.active {
+            background: var(--ink);
+            color: var(--cream);
+        }
+
+        .concept-strip {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0;
+            border-top: 1px solid var(--ink);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .concept-strip span {
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            border-right: 1px solid var(--line);
+            color: var(--charcoal);
+            font-size: 0.68rem;
+            font-weight: 850;
+            line-height: 1.15;
+            text-transform: uppercase;
+        }
+
+        .concept-strip span:last-child {
+            border-right: 0;
+        }
+
+        .research-grid {
+            display: grid;
+            grid-template-columns: minmax(220px, 0.74fr) minmax(460px, 1.48fr) minmax(280px, 0.9fr);
+            gap: 22px;
+            align-items: stretch;
+        }
+
+        .section {
+            min-width: 0;
+            border-top: 1px solid var(--ink);
+            padding-top: 14px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .section h2,
+        .section h3 {
+            margin: 0;
+            font-size: 0.82rem;
+            font-weight: 850;
+            text-transform: uppercase;
+        }
+
+        .section-code {
+            color: var(--muted);
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .input-panel {
+            display: grid;
+            gap: 16px;
+        }
+
+        .input-note {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.55;
+        }
+
+        .param-list {
+            display: grid;
+            gap: 13px;
+        }
+
+        .param {
+            display: grid;
+            gap: 7px;
+        }
+
+        .param-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            color: var(--charcoal);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .track {
+            position: relative;
+            height: 3px;
+            background: var(--line);
+        }
+
+        .track span {
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: calc(var(--value) * 1%);
+            background: var(--ink);
+        }
+
+        .swatches {
+            display: grid;
+            gap: 10px;
+            padding-top: 5px;
+        }
+
+        .swatch-row {
+            display: grid;
+            grid-template-columns: 30px 1fr;
+            gap: 10px;
+            align-items: center;
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .swatch {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--ink);
+            background: var(--swatch);
+        }
+
+        .calibration {
+            display: grid;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        .calibration-title {
+            margin: 0;
+            color: var(--ink);
+            font-size: 0.72rem;
+            font-weight: 850;
+            text-transform: uppercase;
+        }
+
+        .color-control {
+            display: grid;
+            grid-template-columns: 1fr 34px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .color-control label {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.7rem;
+            font-weight: 750;
+        }
+
+        .color-control input[type="color"] {
+            width: 34px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ink);
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .logic-card {
+            margin-top: 8px;
+            padding: 13px;
+            border: 1px solid var(--line);
+            background: rgba(245, 240, 232, 0.62);
+        }
+
+        .formula {
+            margin: 0 0 10px;
+            color: var(--ink);
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+            font-size: 0.77rem;
+            white-space: normal;
+        }
+
+        .logic-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.72rem;
+            line-height: 1.55;
+        }
+
+        .logic-chain {
+            display: grid;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .logic-step {
+            display: grid;
+            grid-template-columns: 82px 1fr;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 0;
+            border-top: 1px solid var(--line);
+        }
+
+        .logic-step b {
+            color: var(--ink);
+            font-size: 0.68rem;
+            font-weight: 850;
+            text-transform: uppercase;
+        }
+
+        .logic-step span {
+            color: var(--muted);
+            font-size: 0.68rem;
+            line-height: 1.35;
+        }
+
+        .variation-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .variation-card {
+            position: relative;
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid var(--line);
+            background: rgba(255, 250, 241, 0.45);
+        }
+
+        .variation-card.selected {
+            border-color: var(--ink);
+            box-shadow: inset 0 0 0 1px var(--ink);
+        }
+
+        .selected-mark {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            border: 1px solid var(--ink);
+            background: rgba(251, 247, 239, 0.9);
+            color: var(--ink);
+            font-size: 0.62rem;
+            font-weight: 850;
+            text-transform: uppercase;
+        }
+
+        .texture-canvas {
+            width: 100%;
+            aspect-ratio: 1 / 0.72;
+            display: block;
+            border: 1px solid var(--ink);
+            background: var(--greige);
+        }
+
+        .variation-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--ink);
+            font-size: 0.78rem;
+            font-weight: 850;
+            line-height: 1.25;
+            text-transform: uppercase;
+        }
+
+        .variation-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.72rem;
+            line-height: 1.45;
+        }
+
+        .variation-logic {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+            padding-top: 2px;
+        }
+
+        .variation-logic span {
+            display: block;
+            padding: 6px 7px;
+            border-top: 1px solid var(--line);
+            color: var(--charcoal);
+            font-size: 0.62rem;
+            font-weight: 800;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .matrix {
+            display: grid;
+            gap: 14px;
+        }
+
+        .matrix-overview {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--ink);
+            background: rgba(255, 250, 241, 0.48);
+        }
+
+        .matrix-overview b {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+        }
+
+        .matrix-overview span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.68rem;
+            line-height: 1.35;
+        }
+
+        .matrix-total {
+            min-width: 64px;
+            padding: 11px 8px;
+            border-left: 1px solid var(--line);
+            color: var(--ink);
+            font-size: 1.15rem;
+            font-weight: 850;
+            text-align: right;
+        }
+
+        .matrix-scale {
+            display: grid;
+            grid-template-columns: minmax(118px, 1fr) repeat(4, 38px);
+            gap: 8px;
+            align-items: end;
+            color: var(--muted);
+            font-size: 0.62rem;
+            font-weight: 850;
+            text-transform: uppercase;
+        }
+
+        .matrix-scale span:not(:first-child) {
+            text-align: center;
+        }
+
+        .matrix-row {
+            display: grid;
+            grid-template-columns: minmax(118px, 1fr) repeat(4, 38px);
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .matrix-label {
+            display: flex;
+            align-items: center;
+            min-height: 56px;
+            padding-right: 8px;
+            border-top: 1px solid var(--line);
+            color: var(--charcoal);
+            font-size: 0.68rem;
+            font-weight: 800;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .score-cell {
+            position: relative;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            min-height: 56px;
+            border: 1px solid var(--line);
+            background:
+                linear-gradient(0deg, rgba(23, 22, 21, 0.05) 1px, transparent 1px),
+                rgba(255, 250, 241, 0.32);
+            background-size: 100% 20%;
+        }
+
+        .score-cell.selected {
+            border-color: var(--ink);
+            box-shadow: inset 0 0 0 1px var(--ink);
+        }
+
+        .score-fill {
+            width: 100%;
+            height: calc(var(--score) * 20%);
+            min-height: 4px;
+            background: color-mix(in srgb, var(--oxidized) 76%, var(--ash-brown));
+            opacity: 0.48;
+        }
+
+        .score-cell.selected .score-fill {
+            opacity: 0.82;
+        }
+
+        .score-number {
+            position: absolute;
+            inset: 7px 0 auto;
+            color: var(--ink);
+            font-size: 0.64rem;
+            font-weight: 850;
+            text-align: center;
+        }
+
+        .matrix-note {
+            margin: 0;
+            padding-top: 2px;
+            color: var(--muted);
+            font-size: 0.68rem;
+            line-height: 1.5;
+        }
+
+        .selected-output {
+            display: grid;
+            grid-template-columns: minmax(500px, 1.34fr) minmax(380px, 0.76fr);
+            gap: 22px;
+            padding-top: 22px;
+            border-top: 1px solid var(--ink);
+        }
+
+        .output-canvas {
+            width: 100%;
+            aspect-ratio: 1 / 0.54;
+            display: block;
+            border: 1px solid var(--ink);
+            background: var(--greige);
+        }
+
+        .application {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(230px, 0.46fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .application-copy {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .application-copy p {
+            margin: 0;
+            max-width: 620px;
+            color: var(--charcoal);
+            font-size: 0.84rem;
+            line-height: 1.6;
+        }
+
+        .application-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .application-tags span {
+            padding: 7px 10px;
+            border: 1px solid var(--line);
+            color: var(--charcoal);
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .garment-canvas {
+            width: 100%;
+            aspect-ratio: 0.78 / 1;
+            display: block;
+            border: 1px solid var(--line);
+            background: rgba(255, 250, 241, 0.42);
+        }
+
+        .placement-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .placement-card {
+            display: grid;
+            gap: 6px;
+        }
+
+        .placement-card canvas {
+            width: 100%;
+            aspect-ratio: 1 / 0.76;
+            display: block;
+            border: 1px solid var(--line);
+            background: rgba(255, 250, 241, 0.42);
+        }
+
+        .placement-card span {
+            color: var(--charcoal);
+            font-size: 0.62rem;
+            font-weight: 850;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 1180px) {
+            .research-grid,
+            .selected-output {
+                grid-template-columns: 1fr;
+            }
+
+            .concept-strip {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .concept-strip span:nth-child(2n) {
+                border-right: 0;
+            }
+
+            .application {
+                grid-template-columns: 1fr;
+            }
+
+            .garment-canvas {
+                max-width: 360px;
+                margin: 0 auto;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .page {
+                width: min(100% - 28px, 1440px);
+                padding: 18px 0 34px;
+            }
+
+            .portfolio-board {
+                padding: 20px;
+                gap: 22px;
+            }
+
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .variation-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .export-tools {
+                justify-items: start;
+            }
+
+            .concept-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .concept-strip span {
+                border-right: 0;
+                min-height: 34px;
+            }
+
+            .placement-strip {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: clamp(2.2rem, 13vw, 3.7rem);
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <article class="portfolio-board" id="portfolio-board">
+            <div class="top-rule">
+                <span>Sub Stratum / Process as Aesthetic</span>
+                <span>Code-Driven Shibori Tide Study</span>
+            </div>
+
+            <header class="hero">
+                <div>
+                    <p class="kicker">Dye Output Selection</p>
+                    <h1>DYE OUTPUT EVALUATION SYSTEM</h1>
+                    <p class="subtitle">Selecting a code-driven Shibori texture through structure, control, and garment relevance.</p>
+                </div>
+                <div class="export-tools">
+                    <div class="export-mode" aria-label="Export mode">
+                        <button class="active" type="button" data-export-mode="board">Board Figure</button>
+                        <button type="button" data-export-mode="plate">Texture Plate</button>
+                    </div>
+                    <button class="export-figure-btn" id="export-figure-btn" type="button">Export Figure</button>
+                </div>
+            </header>
+
+            <div class="concept-strip" aria-label="Collection context">
+                <span>Sub Stratum</span>
+                <span>Inside Outside</span>
+                <span>Structure Revelation</span>
+                <span>Process as Aesthetic</span>
+                <span>Oxidized Time</span>
+            </div>
+
+            <section class="research-grid" aria-label="Shibori Tide evaluation system">
+                <aside class="section input-panel">
+                    <div class="section-header">
+                        <h2>Evaluation Inputs</h2>
+                        <span class="section-code">01</span>
+                    </div>
+                    <p class="input-note">Current selection uses restrained compression marks, oxidized diffusion, and panel-aware edge deposits for the Sub Stratum collection direction.</p>
+
+                    <div class="param-list">
+                        <div class="param">
+                            <div class="param-top"><span>Density</span><span>2.2</span></div>
+                            <div class="track" style="--value: 84"><span></span></div>
+                        </div>
+                        <div class="param">
+                            <div class="param-top"><span>Softness</span><span>0.45</span></div>
+                            <div class="track" style="--value: 45"><span></span></div>
+                        </div>
+                        <div class="param">
+                            <div class="param-top"><span>Border</span><span>0.18</span></div>
+                            <div class="track" style="--value: 18"><span></span></div>
+                        </div>
+                        <div class="param">
+                            <div class="param-top"><span>Alignment</span><span>0.06</span></div>
+                            <div class="track" style="--value: 6"><span></span></div>
+                        </div>
+                    </div>
+
+                    <div class="swatches" aria-label="Selected dye palette">
+                        <div class="swatch-row"><span class="swatch" data-swatch="base"></span><span>Base Color / warm greige</span></div>
+                        <div class="swatch-row"><span class="swatch" data-swatch="dye"></span><span>Dye Color / oxidized grey-red</span></div>
+                        <div class="swatch-row"><span class="swatch" data-swatch="ash"></span><span>Support Tone / ash brown</span></div>
+                    </div>
+
+                    <div class="calibration" aria-label="Color calibration controls">
+                        <p class="calibration-title">Color Calibration</p>
+                        <div class="color-control">
+                            <label for="paper-color"><span>Paper</span><span id="paper-color-value">#f5f0e8</span></label>
+                            <input type="color" id="paper-color" value="#f5f0e8">
+                        </div>
+                        <div class="color-control">
+                            <label for="base-color"><span>Base</span><span id="base-color-value">#d9d0c1</span></label>
+                            <input type="color" id="base-color" value="#d9d0c1">
+                        </div>
+                        <div class="color-control">
+                            <label for="dye-color"><span>Dye</span><span id="dye-color-value">#8f4b43</span></label>
+                            <input type="color" id="dye-color" value="#8f4b43">
+                        </div>
+                        <div class="color-control">
+                            <label for="ash-color"><span>Ash</span><span id="ash-color-value">#7a6657</span></label>
+                            <input type="color" id="ash-color" value="#7a6657">
+                        </div>
+                    </div>
+
+                    <div class="logic-card">
+                        <pre class="formula">shibori_trace = density * softness * border * alignment</pre>
+                        <p>The selected texture balances code-driven control with garment readability, allowing compression rhythm, edge diffusion, and hem deposit to support the inside/outside concept.</p>
+                    </div>
+
+                    <div class="logic-chain" aria-label="Dye logic guidance">
+                        <div class="logic-step"><b>Density</b><span>sets compression rhythm and micro-resist spacing.</span></div>
+                        <div class="logic-step"><b>Softness</b><span>controls diffusion edge and dye bleed softness.</span></div>
+                        <div class="logic-step"><b>Border</b><span>builds opening and hem deposit for garment edges.</span></div>
+                        <div class="logic-step"><b>Alignment</b><span>keeps the field slightly biased to panel direction.</span></div>
+                    </div>
+                </aside>
+
+                <section class="section">
+                    <div class="section-header">
+                        <h2>Texture Variations</h2>
+                        <span class="section-code">02 / Shibori Tide</span>
+                    </div>
+                    <div class="variation-grid">
+                        <article class="variation-card">
+                            <canvas class="texture-canvas" id="texture-a" width="420" height="302"></canvas>
+                            <div class="variation-title"><span>A. Low Absorption</span><span>Pale Trace</span></div>
+                            <p>Lower dye presence keeps the surface quiet, but structural traces become too faint for panel reading.</p>
+                            <div class="variation-logic"><span>Absorption Low</span><span>Trace Soft</span><span>Structure Fades</span></div>
+                        </article>
+                        <article class="variation-card">
+                            <canvas class="texture-canvas" id="texture-b" width="420" height="302"></canvas>
+                            <div class="variation-title"><span>B. High Density</span><span>Strong Resist Rhythm</span></div>
+                            <p>Compressed rhythm reveals the resist logic clearly, while the repeat begins to dominate the garment surface.</p>
+                            <div class="variation-logic"><span>Density High</span><span>Rhythm Strong</span><span>Surface Dominates</span></div>
+                        </article>
+                        <article class="variation-card">
+                            <canvas class="texture-canvas" id="texture-c" width="420" height="302"></canvas>
+                            <div class="variation-title"><span>C. Strong Border</span><span>Hem Deposit</span></div>
+                            <p>Edge accumulation supports hem and opening traces, but the border becomes visually heavy.</p>
+                            <div class="variation-logic"><span>Border High</span><span>Hem Visible</span><span>Edge Heavy</span></div>
+                        </article>
+                        <article class="variation-card selected">
+                            <span class="selected-mark">Selected</span>
+                            <canvas class="texture-canvas" id="texture-d" width="420" height="302"></canvas>
+                            <div class="variation-title"><span>D. Selected Version</span><span>Balanced Micro Shibori</span></div>
+                            <p>Balanced density and softened diffusion make the dye read as process, not surface print.</p>
+                            <div class="variation-logic"><span>Balanced Density</span><span>Readable Edge</span><span>Garment Ready</span></div>
+                        </article>
+                    </div>
+                </section>
+
+                <aside class="section">
+                    <div class="section-header">
+                        <h2>Evaluation Matrix</h2>
+                        <span class="section-code">03</span>
+                    </div>
+                    <div class="matrix" id="matrix"></div>
+                </aside>
+            </section>
+
+            <section class="selected-output">
+                <div class="section">
+                    <div class="section-header">
+                        <h2>Selected Dye Output</h2>
+                        <span class="section-code">04</span>
+                    </div>
+                    <canvas class="output-canvas" id="selected-output" width="620" height="398"></canvas>
+                </div>
+
+                <div class="section application">
+                    <div class="application-copy">
+                        <div>
+                            <div class="section-header">
+                                <h2>Garment Application</h2>
+                                <span class="section-code">05</span>
+                            </div>
+                            <p>The Shibori Tide output is selected because it can sit between lining and outer shell: controlled enough for commercial wearability, yet irregular enough to reveal fold pressure, opening edge diffusion, and time-based dye development.</p>
+                        </div>
+                        <div class="application-tags">
+                            <span>Inner Layer / Lining</span>
+                            <span>Opening Edge Reveal</span>
+                            <span>Hem Deposit</span>
+                            <span>Panel Variation</span>
+                        </div>
+                        <div class="placement-strip" aria-label="Garment placement diagrams">
+                            <div class="placement-card">
+                                <canvas id="placement-lining" width="180" height="130"></canvas>
+                                <span>Lining</span>
+                            </div>
+                            <div class="placement-card">
+                                <canvas id="placement-opening" width="180" height="130"></canvas>
+                                <span>Opening Edge</span>
+                            </div>
+                            <div class="placement-card">
+                                <canvas id="placement-hem" width="180" height="130"></canvas>
+                                <span>Hem Deposit</span>
+                            </div>
+                        </div>
+                    </div>
+                    <canvas class="garment-canvas" id="garment-application" width="280" height="360"></canvas>
+                </div>
+            </section>
+
+            <div class="bottom-rule">
+                <span>Structure Revelation / Inside Outside / Garment Dyeing as Development</span>
+                <span>Warm Greige / Oxidized Grey-Red / Ash Brown</span>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        const palette = {
+            ink: "#171615",
+            charcoal: "#353230",
+            muted: "#746d66",
+            line: "#d6cec3",
+            paper: "#f5f0e8",
+            panel: "#fbf7ef",
+            base: "#d9d0c1",
+            dye: "#8f4b43",
+            oxidized: "#8f4b43",
+            dyeSoft: "#b98274",
+            ash: "#7a6657",
+            cream: "#fffaf1"
+        };
+
+        const variations = [
+            {
+                id: "A",
+                title: "Low Absorption / Pale Trace",
+                canvas: "texture-a",
+                params: { density: 1.15, softness: 0.7, border: 0.05, alignment: 0.03, absorption: 0.42 },
+                scores: [2, 2, 3, 5, 3]
+            },
+            {
+                id: "B",
+                title: "High Density / Strong Resist Rhythm",
+                canvas: "texture-b",
+                params: { density: 3.0, softness: 0.34, border: 0.11, alignment: 0.12, absorption: 0.78 },
+                scores: [4, 3, 4, 2, 3]
+            },
+            {
+                id: "C",
+                title: "Strong Border / Hem Deposit",
+                canvas: "texture-c",
+                params: { density: 2.05, softness: 0.4, border: 0.32, alignment: 0.08, absorption: 0.72 },
+                scores: [4, 4, 3, 3, 4]
+            },
+            {
+                id: "D",
+                title: "Selected Version / Balanced Micro Shibori",
+                canvas: "texture-d",
+                params: { density: 2.2, softness: 0.45, border: 0.18, alignment: 0.06, absorption: 0.68 },
+                scores: [5, 5, 4, 5, 5],
+                selected: true
+            }
+        ];
+
+        const criteria = [
+            "Structure Revelation",
+            "Inside / Outside",
+            "Dye Control",
+            "Wearability",
+            "Collection Consistency"
+        ];
+
+        const selected = variations.find(item => item.selected);
+        const colorControls = {
+            paper: document.getElementById("paper-color"),
+            base: document.getElementById("base-color"),
+            dye: document.getElementById("dye-color"),
+            ash: document.getElementById("ash-color")
+        };
+        const colorReadouts = {
+            paper: document.getElementById("paper-color-value"),
+            base: document.getElementById("base-color-value"),
+            dye: document.getElementById("dye-color-value"),
+            ash: document.getElementById("ash-color-value")
+        };
+        const cssVarMap = {
+            paper: "--paper",
+            base: "--greige",
+            dye: "--oxidized",
+            ash: "--ash-brown"
+        };
+        const exportState = {
+            mode: "board"
+        };
+
+        function hexToRgb(hex) {
+            return {
+                r: parseInt(hex.slice(1, 3), 16),
+                g: parseInt(hex.slice(3, 5), 16),
+                b: parseInt(hex.slice(5, 7), 16)
+            };
+        }
+
+        function mix(a, b, t) {
+            const ca = hexToRgb(a);
+            const cb = hexToRgb(b);
+            const k = Math.max(0, Math.min(1, t));
+            return `rgb(${Math.round(ca.r + (cb.r - ca.r) * k)}, ${Math.round(ca.g + (cb.g - ca.g) * k)}, ${Math.round(ca.b + (cb.b - ca.b) * k)})`;
+        }
+
+        function rgba(hex, alpha) {
+            const c = hexToRgb(hex);
+            return `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha})`;
+        }
+
+        function applyCalibratedPalette() {
+            Object.entries(colorControls).forEach(([key, input]) => {
+                const value = input.value.toLowerCase();
+                palette[key] = value;
+                if (key === "dye") palette.oxidized = value;
+                document.documentElement.style.setProperty(cssVarMap[key], value);
+                colorReadouts[key].textContent = value;
+            });
+            document.querySelectorAll("[data-swatch]").forEach(swatch => {
+                swatch.style.setProperty("--swatch", palette[swatch.dataset.swatch]);
+            });
+        }
+
+        function noise(x, y) {
+            const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+            return value - Math.floor(value);
+        }
+
+        function drawPaper(ctx, w, h) {
+            ctx.fillStyle = palette.base;
+            ctx.fillRect(0, 0, w, h);
+            ctx.globalAlpha = 0.12;
+            for (let y = 0; y < h; y += 3) {
+                ctx.fillStyle = y % 2 ? palette.paper : palette.ash;
+                ctx.fillRect(0, y, w, 1);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawTextileGrain(ctx, w, h, strength = 1) {
+            ctx.save();
+            ctx.globalAlpha = 0.18 * strength;
+            ctx.strokeStyle = palette.cream;
+            ctx.lineWidth = 0.7;
+            for (let y = 1; y < h; y += 5) {
+                const offset = (noise(y * 0.03, 4) - 0.5) * 2;
+                ctx.beginPath();
+                ctx.moveTo(0, y + offset);
+                ctx.lineTo(w, y + offset + (noise(y * 0.04, 8) - 0.5) * 1.6);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 0.12 * strength;
+            ctx.strokeStyle = palette.ash;
+            ctx.lineWidth = 0.5;
+            for (let x = 1; x < w; x += 9) {
+                ctx.beginPath();
+                ctx.moveTo(x + (noise(x * 0.05, 11) - 0.5), 0);
+                ctx.lineTo(x + (noise(x * 0.06, 17) - 0.5), h);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 0.1 * strength;
+            for (let i = 0; i < 120; i++) {
+                const px = noise(i, 40) * w;
+                const py = noise(i, 47) * h;
+                const a = noise(i, 52) * Math.PI;
+                const len = 4 + noise(i, 58) * 16;
+                ctx.strokeStyle = i % 2 ? palette.cream : palette.ash;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len * 0.25);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawStructuralDyeMarks(ctx, w, h, params) {
+            const edge = Math.max(0, Math.min(1, params.border));
+            const absorption = Math.max(0, Math.min(1, params.absorption));
+            ctx.save();
+            ctx.globalCompositeOperation = "multiply";
+
+            const leftBleed = ctx.createLinearGradient(0, 0, w * 0.24, 0);
+            leftBleed.addColorStop(0, rgba(palette.dye, 0.08 + edge * 0.36));
+            leftBleed.addColorStop(0.46, rgba(palette.ash, 0.03 + absorption * 0.08));
+            leftBleed.addColorStop(1, rgba(palette.dye, 0));
+            ctx.fillStyle = leftBleed;
+            ctx.fillRect(0, 0, w * 0.24, h);
+
+            const openingTrace = ctx.createLinearGradient(w * 0.48, 0, w * 0.56, 0);
+            openingTrace.addColorStop(0, rgba(palette.dye, 0));
+            openingTrace.addColorStop(0.5, rgba(palette.dye, 0.05 + absorption * 0.12));
+            openingTrace.addColorStop(1, rgba(palette.dye, 0));
+            ctx.fillStyle = openingTrace;
+            ctx.fillRect(w * 0.45, 0, w * 0.14, h);
+
+            for (let i = 0; i < 7; i++) {
+                const yy = h * (0.66 + i * 0.038);
+                const alpha = (0.035 + edge * 0.07) * (1 - i * 0.08);
+                ctx.strokeStyle = rgba(i % 2 ? palette.ash : palette.dye, alpha);
+                ctx.lineWidth = 3 + i * 0.8;
+                ctx.beginPath();
+                ctx.moveTo(0, yy + Math.sin(i) * 4);
+                ctx.bezierCurveTo(w * 0.22, yy - 8, w * 0.72, yy + 10, w, yy - 3);
+                ctx.stroke();
+            }
+
+            for (let i = 0; i < 18; i++) {
+                const px = noise(i, 71) * w;
+                const py = h * (0.08 + noise(i, 74) * 0.84);
+                const r = (7 + noise(i, 80) * 20) * (0.45 + absorption * 0.35);
+                ctx.fillStyle = rgba(i % 2 ? palette.dye : palette.ash, 0.025 + absorption * 0.035);
+                ctx.beginPath();
+                ctx.ellipse(px, py, r * 2.4, r * 0.62, (noise(i, 83) - 0.5) * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawShiboriTexture(ctx, w, h, params, options = {}) {
+            const scale = options.scale || 1;
+            drawPaper(ctx, w, h);
+
+            const bandCount = Math.round(18 * params.density * scale);
+            const amp = h * (0.018 + params.softness * 0.026);
+            const spacing = w / bandCount;
+            const drift = params.alignment * w * 0.26;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, w, h);
+            ctx.clip();
+
+            for (let i = -3; i < bandCount + 4; i++) {
+                const x = i * spacing + Math.sin(i * 0.34) * drift;
+                const width = Math.max(0.7, spacing * (0.16 + params.absorption * 0.12));
+                const alpha = 0.18 + params.absorption * 0.5;
+                ctx.strokeStyle = rgba(i % 3 === 0 ? palette.ash : palette.dye, alpha);
+                ctx.lineWidth = width;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+                ctx.beginPath();
+                for (let step = 0; step <= 96; step++) {
+                    const t = step / 96;
+                    const y = t * h;
+                    const wave = Math.sin(t * Math.PI * 1.55 + i * 0.18) * amp;
+                    const secondary = Math.sin(t * Math.PI * 3.1 + i * 0.11) * amp * 0.24;
+                    const micro = (noise(i * 0.72, step * 0.08) - 0.5) * amp * 0.16;
+                    const px = x + wave + micro;
+                    const smoothedPx = px + secondary;
+                    step ? ctx.lineTo(smoothedPx, y) : ctx.moveTo(smoothedPx, y);
+                }
+                ctx.stroke();
+            }
+
+            for (let i = 0; i < 42; i++) {
+                const x = noise(i, 9) * w;
+                const y = noise(i, 17) * h;
+                const r = (1.2 + noise(i, 22) * 5) * (0.35 + params.softness);
+                ctx.fillStyle = rgba(i % 2 ? palette.dye : palette.ash, 0.035 + params.absorption * 0.08);
+                ctx.beginPath();
+                ctx.ellipse(x, y, r * 1.45, r * 0.7, noise(i, 31) * Math.PI, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawTextileGrain(ctx, w, h, 0.86);
+            drawStructuralDyeMarks(ctx, w, h, params);
+
+            const edge = Math.max(0, Math.min(1, params.border));
+            if (edge > 0) {
+                const top = ctx.createLinearGradient(0, 0, 0, h * 0.28);
+                top.addColorStop(0, rgba(palette.dye, 0.12 + edge * 0.7));
+                top.addColorStop(1, rgba(palette.dye, 0));
+                ctx.fillStyle = top;
+                ctx.fillRect(0, 0, w, h * 0.28);
+
+                const bottom = ctx.createLinearGradient(0, h, 0, h * 0.62);
+                bottom.addColorStop(0, rgba(palette.ash, 0.16 + edge * 0.85));
+                bottom.addColorStop(1, rgba(palette.ash, 0));
+                ctx.fillStyle = bottom;
+                ctx.fillRect(0, h * 0.62, w, h * 0.38);
+            }
+
+            ctx.strokeStyle = rgba(palette.ink, 0.18);
+            ctx.lineWidth = 1;
+            for (let y = h * 0.2; y < h; y += h * 0.22) {
+                ctx.beginPath();
+                ctx.moveTo(0, y + Math.sin(y) * 3);
+                ctx.bezierCurveTo(w * 0.3, y - 10, w * 0.7, y + 12, w, y - 4);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function drawCanvasFrame(canvas, variation) {
+            const ctx = canvas.getContext("2d");
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
+            const cssW = canvas.clientWidth || canvas.width;
+            const cssH = canvas.clientHeight || canvas.height;
+            canvas.width = Math.round(cssW * dpr);
+            canvas.height = Math.round(cssH * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            drawShiboriTexture(ctx, cssW, cssH, variation.params);
+            drawVariationGuides(ctx, cssW, cssH, variation);
+        }
+
+        function drawVariationGuides(ctx, w, h, variation) {
+            ctx.save();
+            ctx.strokeStyle = rgba(palette.ink, variation.selected ? 0.5 : 0.28);
+            ctx.fillStyle = rgba(palette.paper, 0.72);
+            ctx.lineWidth = 1;
+            if (variation.id === "A") {
+                ctx.fillRect(w * 0.06, h * 0.1, w * 0.38, 22);
+                ctx.fillStyle = palette.ink;
+                ctx.font = "800 10px Inter, Arial";
+                ctx.fillText("faint structure trace", w * 0.08, h * 0.1 + 15);
+            }
+            if (variation.id === "B") {
+                for (let x = w * 0.18; x < w * 0.82; x += w * 0.12) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, h * 0.08);
+                    ctx.lineTo(x, h * 0.9);
+                    ctx.stroke();
+                }
+            }
+            if (variation.id === "C" || variation.id === "D") {
+                ctx.beginPath();
+                ctx.moveTo(0, h * 0.84);
+                ctx.lineTo(w, h * 0.84);
+                ctx.stroke();
+                ctx.fillStyle = rgba(palette.paper, 0.78);
+                ctx.fillRect(w * 0.06, h * 0.84 - 24, w * 0.29, 22);
+                ctx.fillStyle = palette.ink;
+                ctx.font = "800 10px Inter, Arial";
+                ctx.fillText(variation.id === "D" ? "controlled hem deposit" : "heavy hem deposit", w * 0.08, h * 0.84 - 9);
+            }
+            if (variation.id === "D") {
+                ctx.setLineDash([5, 6]);
+                ctx.beginPath();
+                ctx.moveTo(w * 0.5, 0);
+                ctx.lineTo(w * 0.5, h);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            ctx.restore();
+        }
+
+        function renderTextures() {
+            variations.forEach(variation => {
+                const canvas = document.getElementById(variation.canvas);
+                drawCanvasFrame(canvas, variation);
+            });
+
+            const output = document.getElementById("selected-output");
+            const ctx = output.getContext("2d");
+            const dpr = Math.max(2, window.devicePixelRatio || 1);
+            const cssW = output.clientWidth || output.width;
+            const cssH = output.clientHeight || output.height;
+            output.width = Math.round(cssW * dpr);
+            output.height = Math.round(cssH * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            drawShiboriTexture(ctx, cssW, cssH, selected.params, { scale: 1.08 });
+            drawSelectedAnnotations(ctx, cssW, cssH);
+
+            drawGarmentCanvas();
+            renderPlacementMinis();
+        }
+
+        function drawCallout(ctx, text, labelX, labelY, targetX, targetY, options = {}) {
+            const fontSize = options.fontSize || 11;
+            const padX = options.padX || 7;
+            const padY = options.padY || 5;
+            ctx.save();
+            ctx.font = `800 ${fontSize}px Inter, Arial`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            const metrics = ctx.measureText(text);
+            const boxW = Math.ceil(metrics.width + padX * 2);
+            const boxH = fontSize + padY * 2;
+            const align = options.align || "left";
+            const x = align === "right" ? labelX - boxW : labelX;
+            const y = labelY - boxH / 2;
+            ctx.strokeStyle = options.lineColor || palette.ink;
+            ctx.lineWidth = options.lineWidth || 1;
+            ctx.beginPath();
+            ctx.moveTo(targetX, targetY);
+            ctx.lineTo(align === "right" ? x + boxW : x, labelY);
+            ctx.stroke();
+            ctx.fillStyle = rgba(palette.paper, options.fillAlpha || 0.86);
+            ctx.fillRect(x, y, boxW, boxH);
+            ctx.strokeRect(x, y, boxW, boxH);
+            ctx.fillStyle = palette.ink;
+            ctx.fillText(text, x + padX, labelY + 0.5);
+            ctx.restore();
+        }
+
+        function drawSelectedAnnotations(ctx, w, h) {
+            ctx.save();
+            ctx.fillStyle = rgba(palette.paper, 0.54);
+            ctx.fillRect(0, 0, w, h * 0.13);
+            ctx.fillRect(0, h * 0.84, w, h * 0.16);
+            ctx.strokeStyle = rgba(palette.ink, 0.34);
+            ctx.setLineDash([7, 7]);
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, 0);
+            ctx.lineTo(w * 0.5, h);
+            ctx.moveTo(0, h * 0.84);
+            ctx.lineTo(w, h * 0.84);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = palette.ink;
+            ctx.fillStyle = palette.ink;
+            ctx.lineWidth = 1;
+            drawCallout(ctx, "opening edge diffusion", w * 0.045, h * 0.08, w * 0.27, h * 0.2);
+            drawCallout(ctx, "panel axis", w * 0.545, h * 0.08, w * 0.5, h * 0.38);
+            drawCallout(ctx, "compression rhythm", w * 0.955, h * 0.46, w * 0.56, h * 0.34, { align: "right" });
+            drawCallout(ctx, "controlled hem deposit", w * 0.045, h * 0.925, w * 0.31, h * 0.78);
+            ctx.restore();
+        }
+
+        function renderMatrix() {
+            const matrix = document.getElementById("matrix");
+            const totals = variations.map(variation => variation.scores.reduce((sum, score) => sum + score, 0));
+            const selectedTotal = selected.scores.reduce((sum, score) => sum + score, 0);
+            matrix.innerHTML = `
+                <div class="matrix-overview">
+                    <div>
+                        <b>D wins by balance, not intensity.</b>
+                        <span>Rows compare garment relevance across all versions; the selected texture keeps structural evidence visible without becoming print-like.</span>
+                    </div>
+                    <div class="matrix-total">${selectedTotal}/25</div>
+                </div>
+                <div class="matrix-scale">
+                    <span>Criteria</span>
+                    ${variations.map(variation => `<span>${variation.id}</span>`).join("")}
+                </div>
+                ${criteria.map((label, index) => `
+                    <div class="matrix-row">
+                        <div class="matrix-label">${label}</div>
+                        ${variations.map(variation => `
+                            <div class="score-cell ${variation.selected ? "selected" : ""}" title="${variation.id}: ${variation.scores[index]} of 5">
+                                <span class="score-number">${variation.scores[index]}</span>
+                                <span class="score-fill" style="--score: ${variation.scores[index]}"></span>
+                            </div>
+                        `).join("")}
+                    </div>
+                `).join("")}
+                <p class="matrix-note">Total scores: ${variations.map((variation, index) => `${variation.id} ${totals[index]}/25`).join(" / ")}</p>
+            `;
+        }
+
+        function drawGarmentCanvas() {
+            const canvas = document.getElementById("garment-application");
+            const ctx = canvas.getContext("2d");
+            const dpr = Math.max(2, window.devicePixelRatio || 1);
+            const cssW = canvas.clientWidth || canvas.width;
+            const cssH = canvas.clientHeight || canvas.height;
+            canvas.width = Math.round(cssW * dpr);
+            canvas.height = Math.round(cssH * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, cssW, cssH);
+            ctx.fillStyle = "rgba(255,250,241,0.42)";
+            ctx.fillRect(0, 0, cssW, cssH);
+
+            drawCoat(ctx, cssW * 0.14, cssH * 0.08, cssW * 0.72, cssH * 0.82);
+            drawApplicationLabels(ctx, cssW, cssH);
+        }
+
+        function drawCoat(ctx, x, y, w, h) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.36, y);
+            ctx.lineTo(x + w * 0.64, y);
+            ctx.bezierCurveTo(x + w * 0.78, y + h * 0.12, x + w * 0.86, y + h * 0.46, x + w, y + h);
+            ctx.lineTo(x + w * 0.56, y + h);
+            ctx.lineTo(x + w * 0.5, y + h * 0.22);
+            ctx.lineTo(x + w * 0.44, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.bezierCurveTo(x + w * 0.14, y + h * 0.46, x + w * 0.22, y + h * 0.12, x + w * 0.36, y);
+            ctx.closePath();
+            ctx.clip();
+            ctx.translate(x, y);
+            drawShiboriTexture(ctx, w, h, selected.params, { scale: 0.92 });
+            ctx.restore();
+
+            ctx.strokeStyle = palette.ink;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.36, y);
+            ctx.lineTo(x + w * 0.64, y);
+            ctx.bezierCurveTo(x + w * 0.78, y + h * 0.12, x + w * 0.86, y + h * 0.46, x + w, y + h);
+            ctx.lineTo(x + w * 0.56, y + h);
+            ctx.lineTo(x + w * 0.5, y + h * 0.22);
+            ctx.lineTo(x + w * 0.44, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.bezierCurveTo(x + w * 0.14, y + h * 0.46, x + w * 0.22, y + h * 0.12, x + w * 0.36, y);
+            ctx.stroke();
+
+            ctx.strokeStyle = rgba(palette.ink, 0.55);
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.5, y + h * 0.22);
+            ctx.lineTo(x + w * 0.5, y + h);
+            ctx.moveTo(x + w * 0.18, y + h * 0.92);
+            ctx.lineTo(x + w * 0.82, y + h * 0.92);
+            ctx.stroke();
+        }
+
+        function drawApplicationLabels(ctx, w, h) {
+            const points = [
+                ["lining", w * 0.07, h * 0.22, w * 0.4, h * 0.3, "left"],
+                ["opening edge", w * 0.07, h * 0.44, w * 0.49, h * 0.27, "left"],
+                ["hem deposit", w * 0.07, h * 0.88, w * 0.42, h * 0.82, "left"],
+                ["panel variation", w * 0.93, h * 0.2, w * 0.6, h * 0.48, "right"]
+            ];
+            ctx.save();
+            points.forEach(([label, x, y, tx, ty, align]) => {
+                drawCallout(ctx, label, x, y, tx, ty, { align, fontSize: 9, padX: 5, padY: 4, fillAlpha: 0.9 });
+            });
+            ctx.restore();
+        }
+
+        function renderPlacementMinis() {
+            [
+                ["placement-lining", "lining"],
+                ["placement-opening", "opening"],
+                ["placement-hem", "hem"]
+            ].forEach(([id, type]) => {
+                const canvas = document.getElementById(id);
+                const ctx = canvas.getContext("2d");
+                const dpr = Math.max(2, window.devicePixelRatio || 1);
+                const cssW = canvas.clientWidth || canvas.width;
+                const cssH = canvas.clientHeight || canvas.height;
+                canvas.width = Math.round(cssW * dpr);
+                canvas.height = Math.round(cssH * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                drawPlacementMini(ctx, type, 0, 0, cssW, cssH);
+            });
+        }
+
+        function drawPlacementMini(ctx, type, x, y, w, h) {
+            ctx.save();
+            ctx.clearRect(x, y, w, h);
+            ctx.fillStyle = "rgba(255,250,241,0.42)";
+            ctx.fillRect(x, y, w, h);
+
+            const gx = x + w * 0.24;
+            const gy = y + h * 0.13;
+            const gw = w * 0.52;
+            const gh = h * 0.72;
+            ctx.beginPath();
+            ctx.moveTo(gx + gw * 0.34, gy);
+            ctx.lineTo(gx + gw * 0.66, gy);
+            ctx.bezierCurveTo(gx + gw * 0.8, gy + gh * 0.2, gx + gw * 0.88, gy + gh * 0.52, gx + gw, gy + gh);
+            ctx.lineTo(gx, gy + gh);
+            ctx.bezierCurveTo(gx + gw * 0.12, gy + gh * 0.52, gx + gw * 0.2, gy + gh * 0.2, gx + gw * 0.34, gy);
+            ctx.closePath();
+            ctx.save();
+            ctx.clip();
+            ctx.fillStyle = palette.paper;
+            ctx.fillRect(gx - 4, gy - 4, gw + 8, gh + 8);
+            if (type === "lining") {
+                ctx.save();
+                ctx.translate(gx - 4, gy - 4);
+                drawShiboriTexture(ctx, gw + 8, gh + 8, selected.params, { scale: 0.5 });
+                ctx.restore();
+                ctx.globalAlpha = 0.68;
+                ctx.fillStyle = palette.paper;
+                ctx.fillRect(gx + gw * 0.22, gy, gw * 0.56, gh);
+                ctx.globalAlpha = 1;
+            }
+            if (type === "opening") {
+                ctx.fillStyle = palette.paper;
+                ctx.fillRect(gx - 4, gy - 4, gw + 8, gh + 8);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(gx + gw * 0.38, gy, gw * 0.24, gh);
+                ctx.clip();
+                ctx.translate(gx - 4, gy - 4);
+                drawShiboriTexture(ctx, gw + 8, gh + 8, selected.params, { scale: 0.55 });
+                ctx.restore();
+            }
+            if (type === "hem") {
+                ctx.fillStyle = palette.paper;
+                ctx.fillRect(gx - 4, gy - 4, gw + 8, gh + 8);
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(gx - 4, gy + gh * 0.66, gw + 8, gh * 0.36);
+                ctx.clip();
+                ctx.translate(gx - 4, gy - 4);
+                drawShiboriTexture(ctx, gw + 8, gh + 8, selected.params, { scale: 0.55 });
+                ctx.restore();
+            }
+            ctx.restore();
+
+            ctx.strokeStyle = palette.ink;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(gx + gw * 0.34, gy);
+            ctx.lineTo(gx + gw * 0.66, gy);
+            ctx.bezierCurveTo(gx + gw * 0.8, gy + gh * 0.2, gx + gw * 0.88, gy + gh * 0.52, gx + gw, gy + gh);
+            ctx.lineTo(gx, gy + gh);
+            ctx.bezierCurveTo(gx + gw * 0.12, gy + gh * 0.52, gx + gw * 0.2, gy + gh * 0.2, gx + gw * 0.34, gy);
+            ctx.stroke();
+            ctx.strokeStyle = rgba(palette.ink, 0.42);
+            ctx.beginPath();
+            ctx.moveTo(gx + gw * 0.5, gy + gh * 0.18);
+            ctx.lineTo(gx + gw * 0.5, gy + gh);
+            ctx.stroke();
+
+            const target = type === "lining"
+                ? [gx + gw * 0.34, gy + gh * 0.4]
+                : type === "opening"
+                    ? [gx + gw * 0.5, gy + gh * 0.28]
+                    : [gx + gw * 0.5, gy + gh * 0.82];
+            const label = type === "lining" ? "inside surface" : type === "opening" ? "edge reveal" : "lower deposit";
+            drawCallout(ctx, label, x + w * 0.5, y + h - 13, target[0], target[1], {
+                align: "right",
+                fontSize: 8,
+                padX: 4,
+                padY: 3,
+                fillAlpha: 0.9
+            });
+            ctx.restore();
+        }
+
+        function roundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+        }
+
+        function drawScoreDots(ctx, x, y, score) {
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.arc(x + i * 17, y, 4.5, 0, Math.PI * 2);
+                ctx.strokeStyle = palette.ink;
+                ctx.stroke();
+                if (i < score) {
+                    ctx.fillStyle = palette.ink;
+                    ctx.fill();
+                }
+            }
+        }
+
+        function saveCanvas(canvas, filename) {
+            const link = document.createElement("a");
+            link.download = filename;
+            link.href = canvas.toDataURL("image/png");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportCurrentFigure() {
+            if (exportState.mode === "plate") {
+                exportTexturePlate();
+                return;
+            }
+            exportBoardFigure();
+        }
+
+        function exportBoardFigure() {
+            const scale = 2;
+            const w = 1800;
+            const h = 1280;
+            const canvas = document.createElement("canvas");
+            canvas.width = w * scale;
+            canvas.height = h * scale;
+            const ctx = canvas.getContext("2d");
+            ctx.scale(scale, scale);
+
+            ctx.fillStyle = palette.paper;
+            ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = rgba(palette.ink, 0.07);
+            ctx.lineWidth = 1;
+            for (let x = 0; x < w; x += 60) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = 0; y < h; y += 60) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = "rgba(251,247,239,0.9)";
+            ctx.strokeStyle = palette.line;
+            ctx.fillRect(48, 42, w - 96, h - 84);
+            ctx.strokeRect(48, 42, w - 96, h - 84);
+
+            ctx.strokeStyle = palette.ink;
+            ctx.beginPath();
+            ctx.moveTo(84, 86);
+            ctx.lineTo(w - 84, 86);
+            ctx.stroke();
+            ctx.fillStyle = palette.muted;
+            ctx.font = "700 17px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("SUB STRATUM / PROCESS AS AESTHETIC", 84, 116);
+            ctx.textAlign = "right";
+            ctx.fillText("CODE-DRIVEN SHIBORI TIDE STUDY", w - 84, 116);
+
+            ctx.fillStyle = palette.oxidized;
+            ctx.font = "800 18px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("DYE OUTPUT SELECTION", 84, 174);
+            ctx.fillStyle = palette.ink;
+            ctx.font = "800 92px Inter, Arial";
+            ctx.fillText("DYE OUTPUT", 84, 268);
+            ctx.fillText("EVALUATION SYSTEM", 84, 356);
+            ctx.fillStyle = palette.charcoal;
+            ctx.font = "400 25px Inter, Arial";
+            ctx.fillText("Selecting a code-driven Shibori texture through structure, control, and garment relevance.", 84, 406);
+            drawExportConceptStrip(ctx, 84, 430, w - 168);
+
+            const colY = 470;
+            drawExportInputs(ctx, 84, colY, 330, 510);
+            drawExportVariations(ctx, 456, colY, 690, 510);
+            drawExportMatrix(ctx, 1190, colY, 526, 510);
+            drawExportSelected(ctx, 84, 1034, 1632, 150);
+
+            saveCanvas(canvas, "dye-output-evaluation-system-shibori-tide.png");
+        }
+
+        function exportTexturePlate() {
+            const scale = 2;
+            const w = 1600;
+            const h = 1100;
+            const canvas = document.createElement("canvas");
+            canvas.width = w * scale;
+            canvas.height = h * scale;
+            const ctx = canvas.getContext("2d");
+            ctx.scale(scale, scale);
+
+            ctx.fillStyle = palette.paper;
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = "rgba(251,247,239,0.92)";
+            ctx.fillRect(52, 50, w - 104, h - 100);
+            ctx.strokeStyle = palette.line;
+            ctx.strokeRect(52, 50, w - 104, h - 100);
+
+            ctx.strokeStyle = palette.ink;
+            ctx.beginPath();
+            ctx.moveTo(88, 94);
+            ctx.lineTo(w - 88, 94);
+            ctx.stroke();
+            ctx.fillStyle = palette.muted;
+            ctx.font = "800 15px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("TEXTURE PLATE / SELECTED DYE OUTPUT", 88, 124);
+            ctx.textAlign = "right";
+            ctx.fillText("SHIBORI TIDE / BALANCED MICRO SHIBORI", w - 88, 124);
+
+            ctx.fillStyle = palette.ink;
+            ctx.font = "800 58px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("SELECTED SHIBORI TIDE", 88, 202);
+            ctx.fillStyle = palette.charcoal;
+            ctx.font = "400 21px Inter, Arial";
+            wrapText(ctx, "A code-driven dye output selected for structure revelation, inside/outside readability, and controlled garment application.", 88, 238, 850, 28);
+            drawExportConceptStrip(ctx, 88, 270, 980);
+
+            ctx.save();
+            ctx.translate(88, 330);
+            drawShiboriTexture(ctx, 1000, 560, selected.params, { scale: 1.22 });
+            drawSelectedAnnotations(ctx, 1000, 560);
+            ctx.strokeStyle = palette.ink;
+            ctx.strokeRect(0, 0, 1000, 560);
+            ctx.restore();
+
+            ctx.fillStyle = palette.ink;
+            ctx.font = "800 16px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("GARMENT PLACEMENT", 1132, 330);
+            [["lining", "LINING"], ["opening", "OPENING EDGE"], ["hem", "HEM DEPOSIT"]].forEach(([type, label], index) => {
+                const yy = 358 + index * 168;
+                drawPlacementMini(ctx, type, 1132, yy, 226, 132);
+                ctx.fillStyle = palette.charcoal;
+                ctx.font = "800 13px Inter, Arial";
+                ctx.textAlign = "left";
+                ctx.fillText(label, 1380, yy + 68);
+            });
+
+            ctx.strokeStyle = palette.line;
+            ctx.beginPath();
+            ctx.moveTo(88, 925);
+            ctx.lineTo(w - 88, 925);
+            ctx.stroke();
+            ctx.fillStyle = palette.charcoal;
+            ctx.font = "400 20px Inter, Arial";
+            wrapText(ctx, "The selected texture balances code-driven control with garment readability, allowing compression rhythm, edge diffusion, and hem deposit to support the inside/outside concept.", 88, 975, 1100, 30);
+
+            const tags = ["DENSITY 2.2", "SOFTNESS 0.45", "BORDER 0.18", "ALIGNMENT 0.06"];
+            tags.forEach((tag, index) => {
+                const tx = 1220;
+                const ty = 962 + index * 34;
+                ctx.strokeStyle = palette.line;
+                ctx.strokeRect(tx, ty, 250, 24);
+                ctx.fillStyle = palette.charcoal;
+                ctx.font = "800 12px Inter, Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(tag, tx + 125, ty + 16);
+            });
+
+            saveCanvas(canvas, "shibori-tide-selected-texture-plate.png");
+        }
+
+        function drawExportConceptStrip(ctx, x, y, w) {
+            const tags = ["SUB STRATUM", "INSIDE OUTSIDE", "STRUCTURE REVELATION", "PROCESS AS AESTHETIC", "OXIDIZED TIME"];
+            const cellW = w / tags.length;
+            ctx.save();
+            tags.forEach((tag, index) => {
+                const xx = x + index * cellW;
+                ctx.strokeStyle = palette.line;
+                ctx.strokeRect(xx, y, cellW, 32);
+                ctx.fillStyle = palette.charcoal;
+                ctx.font = "800 11px Inter, Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(tag, xx + cellW / 2, y + 20);
+            });
+            ctx.restore();
+        }
+
+        function drawExportTitle(ctx, title, code, x, y, w) {
+            ctx.strokeStyle = palette.ink;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + w, y);
+            ctx.stroke();
+            ctx.fillStyle = palette.ink;
+            ctx.font = "800 19px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText(title, x, y + 32);
+            ctx.fillStyle = palette.muted;
+            ctx.font = "800 14px Inter, Arial";
+            ctx.textAlign = "right";
+            ctx.fillText(code, x + w, y + 32);
+        }
+
+        function drawExportInputs(ctx, x, y, w, h) {
+            drawExportTitle(ctx, "EVALUATION INPUTS", "01", x, y, w);
+            ctx.fillStyle = palette.muted;
+            ctx.font = "400 17px Inter, Arial";
+            wrapText(ctx, "Current selection uses restrained compression marks, oxidized diffusion, and panel-aware edge deposits.", x, y + 72, w, 24);
+
+            const params = [
+                ["Density", "2.2", 84],
+                ["Softness", "0.45", 45],
+                ["Border", "0.18", 18],
+                ["Alignment", "0.06", 6]
+            ];
+            params.forEach(([label, value, score], index) => {
+                const yy = y + 165 + index * 55;
+                ctx.fillStyle = palette.charcoal;
+                ctx.font = "800 16px Inter, Arial";
+                ctx.textAlign = "left";
+                ctx.fillText(label, x, yy);
+                ctx.textAlign = "right";
+                ctx.fillText(value, x + w, yy);
+                ctx.fillStyle = palette.line;
+                ctx.fillRect(x, yy + 16, w, 4);
+                ctx.fillStyle = palette.ink;
+                ctx.fillRect(x, yy + 16, w * score / 100, 4);
+            });
+
+            [["warm greige", palette.base], ["oxidized grey-red", palette.dye], ["ash brown", palette.ash]].forEach(([label, color], index) => {
+                const yy = y + 390 + index * 38;
+                ctx.fillStyle = color;
+                ctx.fillRect(x, yy, 26, 26);
+                ctx.strokeStyle = palette.ink;
+                ctx.strokeRect(x, yy, 26, 26);
+                ctx.fillStyle = palette.muted;
+                ctx.font = "700 15px Inter, Arial";
+                ctx.textAlign = "left";
+                ctx.fillText(label, x + 40, yy + 18);
+            });
+        }
+
+        function drawExportVariations(ctx, x, y, w, h) {
+            drawExportTitle(ctx, "TEXTURE VARIATIONS", "02 / SHIBORI TIDE", x, y, w);
+            const cardW = (w - 24) / 2;
+            const cardH = 207;
+            variations.forEach((variation, index) => {
+                const col = index % 2;
+                const row = Math.floor(index / 2);
+                const xx = x + col * (cardW + 24);
+                const yy = y + 56 + row * (cardH + 22);
+                ctx.fillStyle = "rgba(255,250,241,0.45)";
+                ctx.strokeStyle = variation.selected ? palette.ink : palette.line;
+                ctx.lineWidth = variation.selected ? 2 : 1;
+                ctx.fillRect(xx, yy, cardW, cardH);
+                ctx.strokeRect(xx, yy, cardW, cardH);
+                ctx.save();
+                ctx.translate(xx + 14, yy + 14);
+                drawShiboriTexture(ctx, cardW - 28, 116, variation.params);
+                ctx.restore();
+                ctx.strokeStyle = palette.ink;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(xx + 14, yy + 14, cardW - 28, 116);
+                ctx.fillStyle = palette.ink;
+                ctx.font = "800 16px Inter, Arial";
+                ctx.textAlign = "left";
+                ctx.fillText(`${variation.id}. ${variation.title}`, xx + 14, yy + 156);
+                ctx.fillStyle = palette.muted;
+                ctx.font = "400 13px Inter, Arial";
+                wrapText(ctx, variation.selected ? "Balanced density and softened diffusion read as process, not surface print." : "Parameter shift tests garment readability against dye intensity.", xx + 14, yy + 178, cardW - 28, 18);
+                if (variation.selected) {
+                    ctx.strokeStyle = palette.ink;
+                    ctx.strokeRect(xx + cardW - 94, yy + 12, 72, 24);
+                    ctx.fillStyle = palette.ink;
+                    ctx.font = "800 11px Inter, Arial";
+                    ctx.textAlign = "center";
+                    ctx.fillText("SELECTED", xx + cardW - 58, yy + 28);
+                }
+            });
+        }
+
+        function drawExportMatrix(ctx, x, y, w, h) {
+            drawExportTitle(ctx, "EVALUATION MATRIX", "03", x, y, w);
+            const selectedTotal = selected.scores.reduce((sum, score) => sum + score, 0);
+            ctx.fillStyle = "rgba(255,250,241,0.48)";
+            ctx.fillRect(x, y + 52, w, 78);
+            ctx.strokeStyle = palette.ink;
+            ctx.strokeRect(x, y + 52, w, 78);
+            ctx.fillStyle = palette.ink;
+            ctx.font = "800 15px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("D WINS BY BALANCE, NOT INTENSITY", x + 14, y + 82);
+            ctx.fillStyle = palette.muted;
+            ctx.font = "400 13px Inter, Arial";
+            wrapText(ctx, "The selected texture keeps structure visible without becoming print-like.", x + 14, y + 104, w - 92, 17);
+            ctx.fillStyle = palette.ink;
+            ctx.font = "800 24px Inter, Arial";
+            ctx.textAlign = "right";
+            ctx.fillText(`${selectedTotal}/25`, x + w - 14, y + 99);
+
+            const labelW = 202;
+            const cellW = 54;
+            const gap = 8;
+            const startY = y + 166;
+            ctx.fillStyle = palette.muted;
+            ctx.font = "800 12px Inter, Arial";
+            ctx.textAlign = "left";
+            ctx.fillText("CRITERIA", x, startY - 16);
+            variations.forEach((variation, index) => {
+                ctx.textAlign = "center";
+                ctx.fillText(variation.id, x + labelW + index * (cellW + gap) + cellW / 2, startY - 16);
+            });
+
+            criteria.forEach((label, row) => {
+                const yy = startY + row * 62;
+                ctx.strokeStyle = palette.line;
+                ctx.beginPath();
+                ctx.moveTo(x, yy - 10);
+                ctx.lineTo(x + w, yy - 10);
+                ctx.stroke();
+                ctx.fillStyle = palette.charcoal;
+                ctx.font = "800 12px Inter, Arial";
+                ctx.textAlign = "left";
+                wrapText(ctx, label.toUpperCase(), x, yy + 15, labelW - 12, 14);
+                variations.forEach((variation, col) => {
+                    const xx = x + labelW + col * (cellW + gap);
+                    const score = variation.scores[row];
+                    ctx.fillStyle = "rgba(255,250,241,0.34)";
+                    ctx.fillRect(xx, yy - 6, cellW, 48);
+                    ctx.strokeStyle = variation.selected ? palette.ink : palette.line;
+                    ctx.lineWidth = variation.selected ? 2 : 1;
+                    ctx.strokeRect(xx, yy - 6, cellW, 48);
+                    ctx.fillStyle = rgba(palette.dye, variation.selected ? 0.72 : 0.42);
+                    ctx.fillRect(xx, yy - 6 + 48 * (1 - score / 5), cellW, 48 * score / 5);
+                    ctx.strokeStyle = variation.selected ? palette.ink : palette.line;
+                    ctx.strokeRect(xx, yy - 6, cellW, 48);
+                    ctx.fillStyle = palette.ink;
+                    ctx.font = "800 11px Inter, Arial";
+                    ctx.textAlign = "center";
+                    ctx.fillText(String(score), xx + cellW / 2, yy + 11);
+                });
+            });
+            ctx.lineWidth = 1;
+        }
+
+        function drawExportSelected(ctx, x, y, w, h) {
+            drawExportTitle(ctx, "SELECTED OUTPUT / GARMENT APPLICATION", "04 / 05", x, y, w);
+            ctx.save();
+            ctx.translate(x, y + 48);
+            drawShiboriTexture(ctx, 360, 110, selected.params, { scale: 1.08 });
+            ctx.strokeStyle = palette.ink;
+            ctx.strokeRect(0, 0, 360, 110);
+            ctx.restore();
+
+            ctx.fillStyle = palette.charcoal;
+            ctx.font = "400 18px Inter, Arial";
+            wrapText(ctx, "The selected texture balances code-driven control with garment readability, allowing compression rhythm, edge diffusion, and hem deposit to support the inside/outside concept.", x + 402, y + 72, 710, 26);
+
+            const tags = ["INNER LAYER / LINING", "OPENING EDGE REVEAL", "HEM DEPOSIT", "PANEL VARIATION"];
+            tags.forEach((tag, index) => {
+                const tx = x + 1180 + (index % 2) * 206;
+                const ty = y + 56 + Math.floor(index / 2) * 42;
+                ctx.strokeStyle = palette.line;
+                ctx.strokeRect(tx, ty, 184, 28);
+                ctx.fillStyle = palette.charcoal;
+                ctx.font = "800 12px Inter, Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(tag, tx + 92, ty + 18);
+            });
+        }
+
+        function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(" ");
+            let line = "";
+            for (let i = 0; i < words.length; i++) {
+                const testLine = line ? `${line} ${words[i]}` : words[i];
+                if (ctx.measureText(testLine).width > maxWidth && line) {
+                    ctx.fillText(line, x, y);
+                    line = words[i];
+                    y += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            if (line) ctx.fillText(line, x, y);
+        }
+
+        applyCalibratedPalette();
+        renderMatrix();
+        renderTextures();
+        window.addEventListener("resize", renderTextures);
+        Object.values(colorControls).forEach(input => {
+            input.addEventListener("input", () => {
+                applyCalibratedPalette();
+                renderTextures();
+            });
+        });
+        document.querySelectorAll("[data-export-mode]").forEach(button => {
+            button.addEventListener("click", () => {
+                exportState.mode = button.dataset.exportMode;
+                document.querySelectorAll("[data-export-mode]").forEach(modeButton => {
+                    modeButton.classList.toggle("active", modeButton === button);
+                });
+            });
+        });
+        document.getElementById("export-figure-btn").addEventListener("click", exportCurrentFigure);
+    </script>
+</body>
+</html>
