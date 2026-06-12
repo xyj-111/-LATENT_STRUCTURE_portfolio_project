@@ -110,7 +110,7 @@ function ConceptSystemSection() {
       <h2 id="concept-title" className="visually-hidden">{portfolioCopy.concept.hiddenTitle}</h2>
       <div className="concept-spread">
         <div className="concept-visual concept-visual--left" aria-label={portfolioCopy.concept.visuals.left.ariaLabel}>
-          <img src={portfolioCopy.concept.visuals.left.src} alt={portfolioCopy.concept.visuals.left.label} />
+          <img src={portfolioCopy.concept.visuals.left.src} alt={portfolioCopy.concept.visuals.left.label} loading="lazy" decoding="async" />
         </div>
         <div className="concept-copy-stack">
           {conceptLayers.map((layer) => (
@@ -118,7 +118,7 @@ function ConceptSystemSection() {
           ))}
         </div>
         <div className="concept-visual concept-visual--right" aria-label={portfolioCopy.concept.visuals.right.ariaLabel}>
-          <img src={portfolioCopy.concept.visuals.right.src} alt={portfolioCopy.concept.visuals.right.label} />
+          <img src={portfolioCopy.concept.visuals.right.src} alt={portfolioCopy.concept.visuals.right.label} loading="lazy" decoding="async" />
         </div>
       </div>
     </section>
@@ -183,7 +183,7 @@ function ResearchAnalysisSection() {
                   <dd>Garments with narrative, material depth and subtle uniqueness</dd>
                 </div>
               </dl>
-              <img src={targetConsumerHover} alt="Target consumer visual reference" />
+              <img src={targetConsumerHover} alt="Target consumer visual reference" loading="lazy" decoding="async" />
             </div>
           </div>
         </article>
@@ -307,7 +307,7 @@ function DyeAlgorithmSection() {
           ))}
         </div>
         <div className="dye-algorithm-image">
-          <img src={portfolioCopy.algorithm.image.src} alt={portfolioCopy.algorithm.image.alt} />
+          <img src={portfolioCopy.algorithm.image.src} alt={portfolioCopy.algorithm.image.alt} loading="lazy" decoding="async" />
         </div>
       </div>
     </section>
@@ -329,7 +329,7 @@ function VideoMoodSection() {
           controls
           muted
           playsInline
-          preload="metadata"
+          preload="none"
         />
       </div>
       <p className="video-mood-credit">
@@ -409,7 +409,7 @@ function Clo3DModelingSection() {
                   className={`clo3d-frame clo3d-frame--placeholder${view.compact ? ' clo3d-frame--compact' : ''}`}
                   key={`${model.id}-${view.label}`}
                 >
-                  <img src={view.src} alt={`CLO3D frame ${view.label}`} />
+                  <img src={view.src} alt={`CLO3D frame ${view.label}`} loading="lazy" decoding="async" />
                   <figcaption>{view.label}</figcaption>
                 </figure>
               ))}

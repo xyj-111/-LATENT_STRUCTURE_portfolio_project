@@ -30,7 +30,7 @@ export function LookDetailSheet({ looks, copy }: LookDetailSheetProps) {
                 `technical-flat--${flat.variant}`,
                 flat.image.src ? 'technical-flat--has-image' : '',
               ].filter(Boolean).join(' ')}>
-                {flat.image.src ? <img src={flat.image.src} alt={flat.image.alt} /> : null}
+                {flat.image.src ? <img src={flat.image.src} alt={flat.image.alt} loading="lazy" decoding="async" /> : null}
                 <div className="technical-flat__labels">
                   <span>{flat.viewLabels.front}</span>
                   <span>{flat.viewLabels.back}</span>

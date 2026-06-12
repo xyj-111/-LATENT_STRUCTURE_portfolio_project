@@ -230,7 +230,7 @@ export function ColorPalette({ colors, compact = false }: ColorPaletteProps) {
               itemRefs.current[index] = node;
             }}
           >
-            <img src={image.src} alt={image.alt} draggable={false} />
+            <img src={image.src} alt={image.alt} draggable={false} loading="lazy" decoding="async" />
             {tooltipIndex === index ? (
               <aside className="material-palette-tooltip" aria-live="polite">
                 <strong>{image.info.name}</strong>

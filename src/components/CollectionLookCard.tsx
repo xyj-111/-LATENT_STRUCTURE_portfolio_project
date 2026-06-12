@@ -19,7 +19,7 @@ export function CollectionLookCard({ look, emphasis = false }: CollectionLookCar
         aria-label={look.image.alt}
         role="img"
       >
-        {look.image.src ? <img src={look.image.src} alt={look.image.alt} /> : null}
+        {look.image.src ? <img src={look.image.src} alt={look.image.alt} loading="lazy" decoding="async" /> : null}
       </div>
       {look.title || look.silhouette ? (
         <div className="look-card__meta">

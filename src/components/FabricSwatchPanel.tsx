@@ -33,7 +33,7 @@ export function FabricSwatchPanel({ fabric, swatchImage, copy }: FabricSwatchPan
         {fabric ? <h3>{fabric}</h3> : null}
       </div>
       <div className="swatch-grid swatch-grid--image" aria-label={copy.swatchAriaLabel}>
-        <img src={image.src} alt={image.alt} />
+        <img src={image.src} alt={image.alt} loading="lazy" decoding="async" />
       </div>
     </aside>
   );

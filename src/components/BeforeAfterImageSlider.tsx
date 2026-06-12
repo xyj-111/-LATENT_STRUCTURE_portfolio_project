@@ -81,14 +81,14 @@ export function BeforeAfterImageSlider({ comparison, displayLabel }: BeforeAfter
       <div className="before-after-slider__layer before-after-slider__layer--before">
         <span className="before-after-slider__label before-after-slider__label--before">{comparison.beforeLabel}</span>
         <div className="before-after-slider__garment">
-          {comparison.before.src ? <img src={comparison.before.src} alt={comparison.before.alt} /> : null}
+          {comparison.before.src ? <img src={comparison.before.src} alt={comparison.before.alt} loading="lazy" decoding="async" /> : null}
           {!hasImages ? <span>{displayLabel}</span> : null}
         </div>
       </div>
       <div className="before-after-slider__layer before-after-slider__layer--after" aria-hidden="true">
         <span className="before-after-slider__label before-after-slider__label--after">{comparison.afterLabel}</span>
         <div className="before-after-slider__garment">
-          {comparison.after.src ? <img src={comparison.after.src} alt={comparison.after.alt} /> : null}
+          {comparison.after.src ? <img src={comparison.after.src} alt={comparison.after.alt} loading="lazy" decoding="async" /> : null}
           {!hasImages ? <span>{displayLabel}</span> : null}
         </div>
       </div>
